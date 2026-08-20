@@ -189,8 +189,7 @@ router.post('/', async (req, res) => {
         phone: customer?.phone || 'N/A'
       },
       date: new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }),
-      items: createdItems,
-      whatsappSent
+      items: createdItems
     };
 
     res.status(201).json(formattedOrder);
