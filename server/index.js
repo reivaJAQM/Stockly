@@ -11,8 +11,6 @@ import suppliersRouter from './routes/suppliers.js';
 import settingsRouter from './routes/settings.js';
 import dashboardRouter from './routes/dashboard.js';
 import categoriesRouter from './routes/categories.js';
-import whatsappRouter from './routes/whatsapp.js';
-import { whatsappService } from './services/whatsapp.js';
 
 dotenv.config();
 
@@ -32,7 +30,6 @@ app.use('/api/suppliers', suppliersRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/categories', categoriesRouter);
-app.use('/api/whatsapp', whatsappRouter);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', database: 'PostgreSQL', service: 'Stockly API' });

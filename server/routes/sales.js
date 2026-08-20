@@ -1,6 +1,5 @@
 import express from 'express';
 import { pool } from '../db.js';
-import { whatsappService } from '../services/whatsapp.js';
 
 const router = express.Router();
 
@@ -181,39 +180,6 @@ router.post('/', async (req, res) => {
     );
 
     await client.query('COMMIT');
-
-    // 5. Automatic background WhatsApp sending if customer has phone
-    let whatsappSent = false;
-    const clientPhone = customer?.phone;
-    if (clientPhone && clientPhone !== 'N/A' && clientPhone.trim() !== '') {
-      try {
-        let ticketText = `🧾 *TICKET DE COMPRA — STOCKLY*\n`;
-        ticketText += `━━━━━━━━━━━━━━━━━━━━━\n`;
-        ticketText += `📄 *Orden:* ${orderNumber}\n`;
-        ticketText += `📅 *Fecha:* ${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}\n`;
-        ticketText += `👤 *Cliente:* ${customer?.name || 'Cliente Mostrador'}\n`;
-        ticketText += `━━━━━━━━━━━━━━━━━━━━━\n`;
-        ticketText += `🛒 *DETALLE DE PRODUCTOS:*\n`;
-        createdItems.forEach((i) => {
-          ticketText += `• ${i.quantity}x ${i.name} — $${(Number(i.price) * Number(i.quantity)).toFixed(2)}\n`;
-        });
-        ticketText += `━━━━━━━━━━━━━━━━━━━━━\n`;
-        ticketText += `💵 *Subtotal:* $${Number(subtotal || total).toFixed(2)}\n`;
-        if (Number(discount) > 0) {
-          ticketText += `🏷️ *Descuento:* -$${Number(discount).toFixed(2)}\n`;
-        }
-        ticketText += `💰 *TOTAL PAGADO:* $${Number(total).toFixed(2)}\n`;
-        ticketText += `💳 *Método de Pago:* ${paymentMethod || 'Efectivo'}\n`;
-        ticketText += `━━━━━━━━━━━━━━━━━━━━━\n`;
-        ticketText += `¡Muchas gracias por su preferencia! 🙏✨`;
-
-        await whatsappService.sendMessage(clientPhone, ticketText);
-        whatsappSent = true;
-        console.log(`⚡ Ticket ${orderNumber} enviado automáticamente por WhatsApp a ${clientPhone}`);
-      } catch (waErr) {
-        console.log(`ℹ️ WhatsApp en segundo plano: ${waErr.message}`);
-      }
-    }
 
     const formattedOrder = {
       ...createdOrder,
