@@ -13,8 +13,7 @@ Stockly es una solucion integral para la administracion y control operativo de c
 5. [Estructura del Proyecto](#estructura-del-proyecto)
 6. [Scripts Disponibles](#scripts-disponibles)
 7. [Modelo de Datos](#modelo-de-datos)
-8. [Seguridad y Buenas Practicas](#seguridad-y-buenas-practicas)
-9. [Licencia](#licencia)
+8. [Licencia](#licencia)
 
 ---
 
@@ -174,14 +173,6 @@ El sistema utiliza las siguientes entidades principales en PostgreSQL:
 - **stock_movements**: Registro de auditoria para entradas y salidas de bodega.
 - **activity_logs**: Trazabilidad de eventos y operaciones del sistema.
 - **store_settings**: Configuracion institucional del negocio.
-
----
-
-## Seguridad y Buenas Practicas
-
-- **Variables de Entorno**: Las credenciales de conexion a base de datos y configuraciones privadas deben residir exclusivamente en el archivo `.env` y nunca incluirse en el control de versiones.
-- **Consultas Parametrizadas**: El backend utiliza consultas preparadas en SQL para prevenir vulnerabilidades de inyeccion SQL.
-- **Sanitizacion de Datos**: Validacion de formatos numericos y telefonicos en operaciones transaccionales.
 
 ---
 
