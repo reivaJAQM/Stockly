@@ -241,6 +241,26 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  const deleteSale = async (orderId) => {
+    try {
+      await api.deleteSale(orderId);
+      await refreshData();
+      showToast({
+        type: 'success',
+        title: 'Orden Eliminada',
+        message: `La orden ${orderId} fue eliminada y los productos regresaron al inventario.`
+      });
+    } catch (error) {
+      console.error("Error deleting sale:", error);
+      showToast({
+        type: 'error',
+        title: 'Error al Eliminar',
+        message: 'No se pudo eliminar la orden de la base de datos.'
+      });
+      throw error;
+    }
+  };
+
   // 3. EXPENSES ACTIONS
   const addExpense = async (expenseData) => {
     try {
@@ -422,6 +442,7 @@ export const AppProvider = ({ children }) => {
         adjustStock,
         createSale,
         updateOrderStatus,
+        deleteSale,
         addExpense,
         deleteExpense,
         addCustomer,

@@ -227,4 +227,76 @@ router.put('/:id/status', async (req, res) => {
   }
 });
 
+// DELETE order (with automatic inventory restocking)
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 1. Fetch order details
+    const orderRes = await client.query(
+      'SELECT id, order_number FROM orders WHERE order_number = $1 OR id::text = $1 FOR UPDATE',
+      [id]
+    );
+
+    if (orderRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Orden no encontrada' });
+    }
+
+    const order = orderRes.rows[0];
+    const orderDbId = order.id;
+    const orderNumber = order.order_number;
+
+    // 2. Fetch order items to restock products
+    const itemsRes = await client.query(
+      'SELECT product_id, product_name, quantity, subtotal FROM order_items WHERE order_id = $1',
+      [orderDbId]
+    );
+
+    for (const item of itemsRes.rows) {
+      if (item.product_id) {
+        // Return stock and revert sales counters
+        await client.query(
+          `UPDATE products 
+           SET stock = stock + $1,
+               units_sold = GREATEST(0, units_sold - $1),
+               total_revenue = GREATEST(0, total_revenue - $2),
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $3`,
+          [Number(item.quantity), Number(item.subtotal), Number(item.product_id)]
+        );
+
+        // Record stock movement (restock)
+        await client.query(
+          `INSERT INTO stock_movements (product_id, type, quantity, reason)
+           VALUES ($1, 'entrada', $2, $3)`,
+          [Number(item.product_id), Number(item.quantity), `Restitución por eliminación de orden ${orderNumber}`]
+        );
+      }
+    }
+
+    // 3. Delete order (cascade deletes order_items)
+    await client.query('DELETE FROM orders WHERE id = $1', [orderDbId]);
+
+    // 4. Log activity
+    await client.query(
+      `INSERT INTO activity_logs (type, title)
+       VALUES ('sale', $1)`,
+      [`Orden eliminada: ${orderNumber} (stock restituido)`]
+    );
+
+    await client.query('COMMIT');
+    res.json({ message: 'Orden eliminada y stock restituido exitosamente', orderNumber });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error deleting order:', error);
+    res.status(500).json({ error: 'Error al eliminar la orden' });
+  } finally {
+    client.release();
+  }
+});
+
 export default router;

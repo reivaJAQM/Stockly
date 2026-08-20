@@ -97,6 +97,14 @@ export const api = {
     return res.json();
   },
 
+  async deleteSale(id) {
+    const res = await fetch(`${API_BASE}/sales/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Error al eliminar orden');
+    return res.json();
+  },
+
   // Expenses
   async getExpenses() {
     const res = await fetch(`${API_BASE}/expenses`);

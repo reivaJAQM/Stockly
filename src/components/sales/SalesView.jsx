@@ -14,7 +14,8 @@ import {
   XCircle,
   Filter,
   Calendar,
-  MessageCircle
+  MessageCircle,
+  Trash2
 } from 'lucide-react';
 
 export const SalesView = () => {
@@ -23,7 +24,8 @@ export const SalesView = () => {
     formatCurrency,
     setIsPOSOpen,
     setSelectedReceiptOrder,
-    updateOrderStatus
+    updateOrderStatus,
+    deleteSale
   } = useApp();
 
   const [search, setSearch] = useState('');
@@ -206,7 +208,7 @@ export const SalesView = () => {
                     </select>
                   </td>
                   <td className="py-3.5 px-6 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-1.5">
                       <button
                         onClick={() => openWhatsAppReceipt(order, data.storeInfo)}
                         className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold inline-flex items-center gap-1 transition-colors border border-emerald-200/70"
@@ -222,6 +224,18 @@ export const SalesView = () => {
                       >
                         <Receipt className="w-3.5 h-3.5" />
                         <span>Ver Ticket</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`¿Estás seguro de eliminar la orden ${order.id}? Se eliminará la venta y las unidades vendidas regresarán automáticamente al inventario.`)) {
+                            deleteSale(order.id);
+                          }
+                        }}
+                        className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition-colors"
+                        title="Eliminar orden y restituir stock"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
