@@ -98,7 +98,7 @@ export const CustomersView = () => {
             Directorio de Clientes
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-            Gestiona información de contacto, teléfonos para WhatsApp y compras de clientes.
+            Gestiona información de contacto, teléfonos y compras de clientes.
           </p>
         </div>
 
@@ -117,7 +117,7 @@ export const CustomersView = () => {
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Buscar por nombre, teléfono de WhatsApp o correo..."
+            placeholder="Buscar por nombre, teléfono o correo..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-800"
@@ -215,29 +215,41 @@ export const CustomersView = () => {
               </div>
             </div>
 
-            {/* Spending stats summary */}
-            <div className="grid grid-cols-2 gap-2 pt-3 mt-3 border-t border-slate-100 text-xs">
-              <div className="bg-slate-50 p-2.5 rounded-xl text-center border border-slate-100">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Total Gastado</span>
-                <span className="font-extrabold text-blue-600 text-sm">{formatCurrency(customer.totalSpent || 0)}</span>
-              </div>
-              <div className="bg-slate-50 p-2.5 rounded-xl text-center border border-slate-100">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Historial</span>
-                <span className="font-bold text-slate-800 text-sm">{customer.totalOrders || 0} compras</span>
+              {/* Spending & Debt stats summary */}
+              <div className="grid grid-cols-2 gap-2 pt-3 mt-3 border-t border-slate-100 text-xs">
+                <div className="bg-slate-50 p-2.5 rounded-xl text-center border border-slate-100">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Total Comprado</span>
+                  <span className="font-extrabold text-blue-600 text-sm">{formatCurrency(customer.totalSpent || 0)}</span>
+                </div>
+                <div className={`p-2.5 rounded-xl text-center border ${
+                  Number(customer.totalDebt || 0) > 0
+                    ? 'bg-rose-50 border-rose-200/80 text-rose-700'
+                    : 'bg-slate-50 border-slate-100 text-slate-800'
+                }`}>
+                  <span className={`text-[10px] font-bold block uppercase tracking-wider ${
+                    Number(customer.totalDebt || 0) > 0 ? 'text-rose-600' : 'text-slate-400'
+                  }`}>
+                    {Number(customer.totalDebt || 0) > 0 ? 'Deuda Pendiente' : 'Estado Cuenta'}
+                  </span>
+                  <span className={`font-extrabold text-sm ${
+                    Number(customer.totalDebt || 0) > 0 ? 'text-rose-700' : 'text-emerald-600'
+                  }`}>
+                    {Number(customer.totalDebt || 0) > 0 ? formatCurrency(customer.totalDebt) : 'Al día'}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
 
-        {filteredCustomers.length === 0 && (
-          <div className="col-span-full py-16 flex flex-col items-center justify-center text-slate-400 text-center bg-white rounded-3xl border border-slate-100 p-6">
-            <Users className="w-12 h-12 mb-3 text-slate-300 stroke-[1.5]" />
-            <p className="font-bold text-base text-slate-700">No se encontraron clientes</p>
-            <p className="text-xs text-slate-400 max-w-sm mt-1">
-              Agrega tus clientes con su número de teléfono para poder enviarles sus facturas y tickets directamente a WhatsApp.
-            </p>
-            <button
-              onClick={handleOpenCreateModal}
+          {filteredCustomers.length === 0 && (
+            <div className="col-span-full py-16 flex flex-col items-center justify-center text-slate-400 text-center bg-white rounded-3xl border border-slate-100 p-6">
+              <Users className="w-12 h-12 mb-3 text-slate-300 stroke-[1.5]" />
+              <p className="font-bold text-base text-slate-700">No se encontraron clientes</p>
+              <p className="text-xs text-slate-400 max-w-sm mt-1">
+                Registra a tus clientes habituales para gestionar compras al contado y ventas a crédito / fiado.
+              </p>
+              <button
+                onClick={handleOpenCreateModal}
               className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition-all"
             >
               + Agregar Primer Cliente

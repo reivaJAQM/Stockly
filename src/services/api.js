@@ -97,6 +97,19 @@ export const api = {
     return res.json();
   },
 
+  async addPaymentToOrder(id, paymentData) {
+    const res = await fetch(`${API_BASE}/sales/${encodeURIComponent(id)}/payments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(paymentData)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al registrar abono');
+    }
+    return res.json();
+  },
+
   async deleteSale(id) {
     const res = await fetch(`${API_BASE}/sales/${encodeURIComponent(id)}`, {
       method: 'DELETE'

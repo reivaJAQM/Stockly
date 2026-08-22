@@ -30,6 +30,7 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
     { id: 'expenses', label: 'Gastos', icon: IconExpenses },
     { id: 'customers', label: 'Clientes', icon: IconCustomers },
     { id: 'suppliers', label: 'Proveedores', icon: IconSuppliers },
+    { id: 'charts', label: 'Gráficos', icon: IconReports },
     { id: 'settings', label: 'Configuración', icon: IconSettings },
   ];
 

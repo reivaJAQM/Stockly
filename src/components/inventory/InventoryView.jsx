@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { CustomSelect } from '../common/CustomSelect';
 import {
   Plus,
   Search,
@@ -175,17 +176,15 @@ export const InventoryView = () => {
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto">
-          <select
+        <div className="flex items-center gap-2.5 w-full md:w-auto overflow-x-auto">
+          <CustomSelect
             value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-          >
-            <option value="all">Todas las categorías</option>
-            {categories.filter((c) => c !== 'all').map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+            onChange={setSelectedCategory}
+            options={[
+              { value: 'all', label: 'Todas las categorías' },
+              ...categories.filter((c) => c !== 'all').map((c) => ({ value: c, label: c }))
+            ]}
+          />
 
           <div className="flex items-center bg-slate-50 p-1 rounded-2xl border border-slate-200">
             <button

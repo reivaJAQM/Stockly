@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   AlertTriangle
 } from 'lucide-react';
-import { WhatsAppSettings } from './WhatsAppSettings';
 
 export const SettingsView = () => {
   const { data, updateSettings } = useApp();
@@ -99,9 +98,6 @@ export const SettingsView = () => {
           <span>¡Configuración guardada correctamente en el sistema!</span>
         </div>
       )}
-
-      {/* WhatsApp Background Connection */}
-      <WhatsAppSettings />
 
       <form onSubmit={handleSave} className="space-y-6 text-xs">
         {/* Business Info Card */}

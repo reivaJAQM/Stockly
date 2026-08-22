@@ -175,12 +175,12 @@ export const WhatsAppSettings = () => {
             </h4>
             <ol className="list-decimal list-inside space-y-2 font-medium">
               <li>Abre <strong>WhatsApp</strong> en tu teléfono.</li>
-              <li>Toca <strong>Ajustes (⚙️)</strong> o <strong>Menú (⋮)</strong>.</li>
-              <li>Selecciona <strong>Dispositivos vinculados</strong>.</li>
-              <li>Toca <strong>Vincular un dispositivo</strong> y apunta tu cámara al código QR.</li>
+              <li>Toca <strong>Ajustes</strong> o <strong>Menú (tres puntos)</strong>.</li>
+              <li>Selecciona <strong>Dispositivos vinculados</strong> y luego <strong>Vincular un dispositivo</strong>.</li>
+              <li>Apunta tu teléfono hacia este código QR para escanearlo.</li>
             </ol>
-            <p className="text-[11px] text-slate-400 pt-2 border-t border-slate-200">
-              🔒 La sesión se almacena de forma segura en tu servidor local. Solo necesitas escanearlo una sola vez.
+            <p className="text-[11px] text-slate-400 mt-2 italic">
+              La sesión se almacena de forma segura en tu servidor local. Solo necesitas escanearlo una sola vez.
             </p>
           </div>
         </div>

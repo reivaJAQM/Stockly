@@ -8,6 +8,7 @@ import { SalesView } from './components/sales/SalesView';
 import { ExpensesView } from './components/expenses/ExpensesView';
 import { CustomersView } from './components/customers/CustomersView';
 import { SuppliersView } from './components/suppliers/SuppliersView';
+import { ChartsView } from './components/charts/ChartsView';
 import { SettingsView } from './components/settings/SettingsView';
 
 // Modals
@@ -55,6 +56,10 @@ export function App() {
         return <CustomersView />;
       case 'suppliers':
         return <SuppliersView />;
+      case 'charts':
+      case 'reports':
+      case 'analytics':
+        return <ChartsView />;
       case 'settings':
         return <SettingsView />;
       default:

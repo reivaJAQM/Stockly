@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { CreditCard, Banknote, ArrowRightLeft } from 'lucide-react';
+import { Banknote, ArrowRightLeft } from 'lucide-react';
 
 export const ChannelDonut = () => {
   const { data, formatCurrency } = useApp();
@@ -10,7 +10,6 @@ export const ChannelDonut = () => {
   const totalSales = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
 
   const cashTotal = orders.filter((o) => (o.paymentMethod || '').toLowerCase().includes('efectivo') || (o.paymentMethod || '').toLowerCase().includes('cash')).reduce((sum, o) => sum + Number(o.total || 0), 0);
-  const cardTotal = orders.filter((o) => (o.paymentMethod || '').toLowerCase().includes('tarjeta') || (o.paymentMethod || '').toLowerCase().includes('card')).reduce((sum, o) => sum + Number(o.total || 0), 0);
   const transferTotal = orders.filter((o) => (o.paymentMethod || '').toLowerCase().includes('transferencia') || (o.paymentMethod || '').toLowerCase().includes('transfer')).reduce((sum, o) => sum + Number(o.total || 0), 0);
 
   const methods = [
@@ -21,14 +20,6 @@ export const ChannelDonut = () => {
       percentage: totalSales > 0 ? Number(((cashTotal / totalSales) * 100).toFixed(1)) : 0,
       color: '#10b981',
       icon: Banknote
-    },
-    {
-      id: 'card',
-      name: 'Tarjeta',
-      amount: cardTotal,
-      percentage: totalSales > 0 ? Number(((cardTotal / totalSales) * 100).toFixed(1)) : 0,
-      color: '#3b82f6',
-      icon: CreditCard
     },
     {
       id: 'transfer',

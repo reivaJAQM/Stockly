@@ -1,10 +1,8 @@
-import React from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { StatCard } from './StatCard';
-import { SalesChart } from './SalesChart';
-import { TopProducts } from './TopProducts';
 import { RecentSales } from './RecentSales';
-import { LowStockWidget } from './LowStockWidget';
+import { PendingDebtsWidget } from './PendingDebtsWidget';
 import { RecentActivity } from './RecentActivity';
 import {
   IconSales,
@@ -14,44 +12,351 @@ import {
 } from '../common/StocklyIcons';
 import {
   Calendar,
-  ChevronDown
+  Clock,
+  CalendarDays,
+  CalendarRange,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  X
 } from 'lucide-react';
+
+const MONTH_NAMES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+];
+
+const MONTH_SHORT = [
+  'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+  'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+];
 
 export const DashboardView = () => {
   const { data, formatCurrency, dateRange, setDateRange, setActiveTab } = useApp();
 
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [pickerMode, setPickerMode] = useState('month'); // 'month' | 'year'
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+
+  const popoverRef = useRef(null);
+
+  // Close popover when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target)) {
+        setIsPickerOpen(false);
+      }
+    };
+    if (isPickerOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isPickerOpen]);
+
+  const timeOptions = [
+    { id: 'today', label: 'Hoy', icon: Clock },
+    { id: 'thisWeek', label: 'Esta semana', icon: CalendarDays },
+    { id: 'thisMonth', label: 'Este mes', icon: Calendar },
+    { id: 'thisYear', label: 'Este año', icon: CalendarRange },
+  ];
+
+  const isCustomActive = dateRange === 'customMonth' || dateRange === 'customYear';
+
+  // Helper to parse dates safely
+  const isDateInSelectedRange = (dateInput, range) => {
+    if (!dateInput) return false;
+    const itemDate = new Date(dateInput);
+    if (isNaN(itemDate.getTime())) return true;
+
+    const currentNow = new Date();
+    const todayStart = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate());
+
+    if (range === 'today') {
+      return itemDate >= todayStart;
+    }
+
+    if (range === 'thisWeek') {
+      const dayOfWeek = currentNow.getDay();
+      const diffToMonday = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+      const weekStart = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate() + diffToMonday);
+      return itemDate >= weekStart;
+    }
+
+    if (range === 'thisMonth') {
+      const monthStart = new Date(currentNow.getFullYear(), currentNow.getMonth(), 1);
+      return itemDate >= monthStart;
+    }
+
+    if (range === 'thisYear') {
+      const yearStart = new Date(currentNow.getFullYear(), 0, 1);
+      return itemDate >= yearStart;
+    }
+
+    if (range === 'customMonth') {
+      return itemDate.getFullYear() === selectedYear && itemDate.getMonth() === selectedMonth;
+    }
+
+    if (range === 'customYear') {
+      return itemDate.getFullYear() === selectedYear;
+    }
+
+    return true;
+  };
+
+  // Filtered metrics based on the selected range
+  const { totalSales, totalExpenses, newCustomersCount, salesCount, periodLabel } = useMemo(() => {
+    const orders = data.orders || [];
+    const expenses = data.expenses || [];
+    const customers = data.customers || [];
+
+    const activeRange = dateRange || 'today';
+
+    const validOrders = orders.filter((o) => {
+      if (o.status === 'Cancelado') return false;
+      const orderDate = o.createdAt || o.date;
+      return isDateInSelectedRange(orderDate, activeRange);
+    });
+
+    const validExpenses = expenses.filter((e) => {
+      const expDate = e.createdAt || e.date;
+      return isDateInSelectedRange(expDate, activeRange);
+    });
+
+    const validCustomers = customers.filter((c) => {
+      const custDate = c.createdAt || c.joinedDate;
+      return isDateInSelectedRange(custDate, activeRange);
+    });
+
+    const salesSum = validOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const expSum = validExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
+    const labels = {
+      today: 'hoy',
+      thisWeek: 'esta semana',
+      thisMonth: 'este mes',
+      thisYear: 'este año',
+      customMonth: `${MONTH_NAMES[selectedMonth]} ${selectedYear}`,
+      customYear: `el año ${selectedYear}`
+    };
+
+    const fallbackSales = orders.length === 0 ? Number(data.kpis?.totalSales || 0) : salesSum;
+    const fallbackExpenses = expenses.length === 0 ? Number(data.kpis?.totalExpenses || 0) : expSum;
+
+    return {
+      totalSales: fallbackSales,
+      totalExpenses: fallbackExpenses,
+      newCustomersCount: validCustomers.length > 0 ? validCustomers.length : (customers.length || 0),
+      salesCount: validOrders.length,
+      periodLabel: labels[activeRange] || 'el período'
+    };
+  }, [data.orders, data.expenses, data.customers, data.kpis, dateRange, selectedMonth, selectedYear]);
+
   const totalStockUnits = (data.products || []).reduce((sum, p) => sum + (Number(p.stock) || 0), 0);
-  const totalExpenses = (data.expenses || []).reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
+  const handleSelectSpecificMonth = (monthIdx) => {
+    setSelectedMonth(monthIdx);
+    setDateRange('customMonth');
+    setIsPickerOpen(false);
+  };
+
+  const handleSelectSpecificYear = (yearNum) => {
+    setSelectedYear(yearNum);
+    setDateRange('customYear');
+    setIsPickerOpen(false);
+  };
+
+  const availableYears = [2023, 2024, 2025, 2026, 2027];
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Top Welcome & Date Filter Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Top Welcome & Custom Stockly Date Segmented Filter */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight">
-            ¡Bienvenido de vuelta, {data.storeInfo.user.name.split(' ')[0]}!
+          <h1 className="text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+            <span>¡Bienvenido de vuelta, {data.storeInfo.user.name.split(' ')[0]}!</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-            Este es el resumen de tu negocio
+            Resumen de operaciones y métricas clave de <strong className="text-slate-700">{periodLabel}</strong>
           </p>
         </div>
 
-        {/* Date Filter Dropdown */}
-        <div className="relative inline-block self-start sm:self-auto">
-          <div className="flex items-center gap-2 bg-white px-3.5 py-2 rounded-2xl border border-slate-200 shadow-xs hover:border-slate-300 transition-colors">
-            <Calendar className="w-4 h-4 text-slate-500" />
-            <select
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
-              className="appearance-none bg-transparent text-xs font-semibold text-slate-800 pr-6 cursor-pointer focus:outline-none"
+        {/* Stockly Signature Segmented Date Filter */}
+        <div className="relative self-start lg:self-auto flex items-center gap-1.5" ref={popoverRef}>
+          <div className="bg-slate-100/90 p-1 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-1 flex-wrap sm:flex-nowrap">
+            {timeOptions.map((opt) => {
+              const isSelected = (dateRange || 'today') === opt.id;
+              const Icon = opt.icon;
+
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => {
+                    setDateRange(opt.id);
+                    setIsPickerOpen(false);
+                  }}
+                  className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 select-none ${
+                    isSelected
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 active:scale-95'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/70 active:scale-98'
+                  }`}
+                >
+                  {isSelected && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-pulse flex-shrink-0" />
+                  )}
+                  <span>{opt.label}</span>
+                </button>
+              );
+            })}
+
+            {/* Separator */}
+            <div className="h-4 w-px bg-slate-300 mx-0.5 hidden sm:block" />
+
+            {/* Specific Month/Year Button */}
+            <button
+              onClick={() => setIsPickerOpen(!isPickerOpen)}
+              className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 select-none ${
+                isCustomActive
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 active:scale-95'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70 active:scale-98'
+              }`}
+              title="Consultar un mes o año en específico"
             >
-              <option value="30days">Últimos 30 días</option>
-              <option value="thisMonth">Este mes</option>
-              <option value="thisWeek">Esta semana</option>
-              <option value="today">Hoy</option>
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 pointer-events-none" />
+              {isCustomActive && (
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-pulse flex-shrink-0" />
+              )}
+              <Calendar className="w-3.5 h-3.5" />
+              <span>
+                {dateRange === 'customMonth'
+                  ? `${MONTH_SHORT[selectedMonth]} ${selectedYear}`
+                  : dateRange === 'customYear'
+                  ? `Año ${selectedYear}`
+                  : 'Mes / Año'}
+              </span>
+              <ChevronDown className={`w-3 h-3 transition-transform ${isPickerOpen ? 'rotate-180' : ''}`} />
+            </button>
           </div>
+
+          {/* Floating Popover for Specific Month/Year */}
+          {isPickerOpen && (
+            <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-3xl p-4 shadow-2xl border border-slate-100 z-50 animate-in fade-in zoom-in-95 duration-150">
+              {/* Header Mode Switcher */}
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold">
+                  <button
+                    onClick={() => setPickerMode('month')}
+                    className={`px-3 py-1 rounded-lg transition-all ${
+                      pickerMode === 'month'
+                        ? 'bg-white text-blue-600 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Por Mes
+                  </button>
+                  <button
+                    onClick={() => setPickerMode('year')}
+                    className={`px-3 py-1 rounded-lg transition-all ${
+                      pickerMode === 'year'
+                        ? 'bg-white text-blue-600 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Por Año
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setIsPickerOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Month Mode */}
+              {pickerMode === 'month' && (
+                <div>
+                  {/* Year Selector in Month Mode */}
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <button
+                      onClick={() => setSelectedYear((y) => y - 1)}
+                      className="p-1 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
+                      title="Año anterior"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="font-extrabold text-sm text-slate-800 tracking-tight">
+                      {selectedYear}
+                    </span>
+                    <button
+                      onClick={() => setSelectedYear((y) => y + 1)}
+                      className="p-1 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
+                      title="Año siguiente"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* 12 Months Grid */}
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {MONTH_SHORT.map((mShort, idx) => {
+                      const isSelectedMonth =
+                        dateRange === 'customMonth' &&
+                        selectedMonth === idx;
+
+                      return (
+                        <button
+                          key={mShort}
+                          onClick={() => handleSelectSpecificMonth(idx)}
+                          className={`py-2 px-2 rounded-xl text-xs font-bold transition-all text-center ${
+                            isSelectedMonth
+                              ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
+                              : 'text-slate-700 hover:bg-blue-50 hover:text-blue-600'
+                          }`}
+                        >
+                          {mShort}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Year Mode */}
+              {pickerMode === 'year' && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 mb-2 px-1">
+                    Selecciona un año completo:
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {availableYears.map((yearNum) => {
+                      const isSelectedYear =
+                        dateRange === 'customYear' && selectedYear === yearNum;
+
+                      return (
+                        <button
+                          key={yearNum}
+                          onClick={() => handleSelectSpecificYear(yearNum)}
+                          className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
+                            isSelectedYear
+                              ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
+                              : 'bg-slate-50 text-slate-700 hover:bg-blue-50 hover:text-blue-600'
+                          }`}
+                        >
+                          <span>{yearNum}</span>
+                          {isSelectedYear && <Check className="w-3.5 h-3.5" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -59,9 +364,9 @@ export const DashboardView = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard
           title="Ventas"
-          value={formatCurrency(data.kpis?.totalSales || 0)}
+          value={formatCurrency(totalSales)}
           growth={data.kpis?.totalSalesGrowth || 0}
-          growthLabel="ingresos registrados"
+          growthLabel={`ingresos de ${periodLabel}`}
           icon={IconSales}
           iconBg="bg-blue-50/80 border-blue-200/70 text-blue-600 shadow-xs"
           onClick={() => setActiveTab('sales')}
@@ -71,7 +376,7 @@ export const DashboardView = () => {
           title="Gastos"
           value={formatCurrency(totalExpenses)}
           growth={0}
-          growthLabel="egresos en caja"
+          growthLabel={`egresos de ${periodLabel}`}
           icon={IconExpenses}
           iconBg="bg-rose-50/80 border-rose-200/70 text-rose-600 shadow-xs"
           onClick={() => setActiveTab('expenses')}
@@ -79,7 +384,7 @@ export const DashboardView = () => {
 
         <StatCard
           title="Clientes"
-          value={Number(data.kpis?.newCustomersCount || (data.customers || []).length || 0).toLocaleString('en-US')}
+          value={Number(newCustomersCount).toLocaleString('en-US')}
           growth={data.kpis?.customersGrowth || 0}
           growthLabel="en directorio"
           icon={IconCustomers}
@@ -98,25 +403,17 @@ export const DashboardView = () => {
         />
       </div>
 
-      {/* Row 2: Sales Trend and Best Sellers */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-        <div className="lg:col-span-7 xl:col-span-8 h-full">
-          <SalesChart />
-        </div>
-        <div className="lg:col-span-5 xl:col-span-4 h-full">
-          <TopProducts />
-        </div>
+      {/* Row 2: Últimas Ventas a ancho completo */}
+      <div className="w-full">
+        <RecentSales />
       </div>
 
-      {/* Row 3: Recent Sales, Low Stock, Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-        <div className="lg:col-span-6 xl:col-span-5 h-full">
-          <RecentSales />
+      {/* Row 3: Cuentas por Cobrar (50%) y Actividad Reciente (50%) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        <div className="h-full">
+          <PendingDebtsWidget />
         </div>
-        <div className="lg:col-span-6 xl:col-span-4 h-full">
-          <LowStockWidget />
-        </div>
-        <div className="lg:col-span-12 xl:col-span-3 h-full">
+        <div className="h-full">
           <RecentActivity />
         </div>
       </div>

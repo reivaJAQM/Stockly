@@ -65,7 +65,7 @@ export const AppProvider = ({ children }) => {
   const [editingExpense, setEditingExpense] = useState(null);
   const [isAdjustStockModalOpen, setIsAdjustStockModalOpen] = useState(false);
   const [selectedStockProduct, setSelectedStockProduct] = useState(null);
-  const [dateRange, setDateRange] = useState('30days');
+  const [dateRange, setDateRange] = useState('today');
   const [inventorySubTab, setInventorySubTab] = useState('all'); // 'all' | 'sold'
   const [toast, setToast] = useState(null);
 
@@ -238,6 +238,27 @@ export const AppProvider = ({ children }) => {
       await refreshData();
     } catch (error) {
       console.error("Error updating order status:", error);
+    }
+  };
+
+  const addOrderPayment = async (orderId, paymentData) => {
+    try {
+      const result = await api.addPaymentToOrder(orderId, paymentData);
+      await refreshData();
+      showToast({
+        type: 'success',
+        title: 'Abono Registrado',
+        message: `Se registró un abono de $${Number(paymentData.amount).toFixed(2)} correctamente.`
+      });
+      return result;
+    } catch (error) {
+      console.error("Error adding order payment:", error);
+      showToast({
+        type: 'error',
+        title: 'Error al Registrar Abono',
+        message: error.message || 'No se pudo registrar el abono en la base de datos.'
+      });
+      throw error;
     }
   };
 
@@ -441,6 +462,7 @@ export const AppProvider = ({ children }) => {
         deleteProduct,
         adjustStock,
         createSale,
+        addOrderPayment,
         updateOrderStatus,
         deleteSale,
         addExpense,

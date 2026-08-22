@@ -1,13 +1,10 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { Logo } from '../common/Logo';
-import { openWhatsAppReceipt, getWhatsAppReceiptUrl } from '../../utils/whatsapp';
 import {
   X,
   Printer,
   CheckCircle,
-  MessageCircle,
-  ExternalLink,
   Phone
 } from 'lucide-react';
 
@@ -23,10 +20,6 @@ export const ReceiptModal = ({ order, onClose }) => {
 
   const handlePrint = () => {
     window.print();
-  };
-
-  const handleWhatsApp = () => {
-    openWhatsAppReceipt(order, storeInfo);
   };
 
   return (
@@ -49,29 +42,6 @@ export const ReceiptModal = ({ order, onClose }) => {
           </button>
         </div>
 
-        {/* WhatsApp Direct Action Banner */}
-        <div className="mt-3.5 p-3.5 bg-emerald-50/90 rounded-2xl border border-emerald-200/80 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs flex-shrink-0">
-              <MessageCircle className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs font-black text-emerald-950">Despacho por WhatsApp</p>
-              <p className="text-[11px] text-emerald-700 font-medium">
-                {hasPhone ? `Cliente: ${customerPhone}` : 'Envío directo en 1 clic'}
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={handleWhatsApp}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 flex items-center gap-1.5 transition-all cursor-pointer"
-          >
-            <span>Enviar</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
         {/* Printable Ticket Receipt */}
         <div id="printable-receipt" className="mt-3.5 p-5 bg-slate-50/90 rounded-2xl border border-slate-200 text-xs font-mono">
           {/* Business Header */}
@@ -81,7 +51,7 @@ export const ReceiptModal = ({ order, onClose }) => {
               {storeName}
             </h2>
             {storeInfo.address && <p className="text-[10px] text-slate-500 font-sans">{storeInfo.address}</p>}
-            {storeInfo.phone && <p className="text-[10px] text-slate-500 font-sans">Tel / WhatsApp: {storeInfo.phone}</p>}
+            {storeInfo.phone && <p className="text-[10px] text-slate-500 font-sans">Tel: {storeInfo.phone}</p>}
           </div>
 
           {/* Order Meta */}
@@ -100,8 +70,8 @@ export const ReceiptModal = ({ order, onClose }) => {
             </div>
             {hasPhone && (
               <div className="flex justify-between">
-                <span className="text-slate-500 font-sans">WhatsApp:</span>
-                <span className="font-bold text-emerald-700 font-sans">{customerPhone}</span>
+                <span className="text-slate-500 font-sans">Teléfono:</span>
+                <span className="font-bold text-slate-800 font-sans">{customerPhone}</span>
               </div>
             )}
             <div className="flex justify-between">
@@ -134,7 +104,7 @@ export const ReceiptModal = ({ order, onClose }) => {
             </table>
           </div>
 
-          {/* Totals */}
+          {/* Totals & Credit Balance */}
           <div className="py-2.5 space-y-1 text-[11px] font-sans">
             <div className="flex justify-between text-slate-500">
               <span>Subtotal:</span>
@@ -146,10 +116,30 @@ export const ReceiptModal = ({ order, onClose }) => {
                 <span>-{formatCurrency(order.discount)}</span>
               </div>
             )}
+
+            {/* Total Section */}
             <div className="flex justify-between text-sm font-extrabold text-slate-900 pt-2 border-t border-slate-300 font-mono">
-              <span>TOTAL PAGADO:</span>
+              <span>TOTAL COMPRA:</span>
               <span className="text-blue-600 text-base">{formatCurrency(order.total)}</span>
             </div>
+
+            {/* Crédito / Fiado Breakdown if exists */}
+            {(Number(order.balanceDue) > 0 || (order.paymentMethod || '').toLowerCase().includes('crédito') || (order.paymentMethod || '').toLowerCase().includes('fiado')) && (
+              <div className="pt-2 mt-1.5 border-t border-dashed border-amber-300 bg-amber-50/60 p-2 rounded-xl space-y-1">
+                <div className="flex justify-between text-slate-700 font-semibold">
+                  <span>Abonado a la fecha:</span>
+                  <span className="text-emerald-700 font-extrabold">
+                    {formatCurrency(order.amountPaid !== undefined ? order.amountPaid : (order.amount_paid || (order.status === 'Completado' ? order.total : 0)))}
+                  </span>
+                </div>
+                <div className="flex justify-between text-rose-700 font-extrabold text-xs">
+                  <span>SALDO PENDIENTE:</span>
+                  <span className="text-rose-700 font-black">
+                    {formatCurrency(order.balanceDue !== undefined ? order.balanceDue : (order.balance_due || 0))}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {order.paymentMethod === 'Efectivo' && Number(order.cashGiven) > 0 && (
               <div className="pt-2 mt-1 border-t border-dashed border-slate-200 space-y-0.5">

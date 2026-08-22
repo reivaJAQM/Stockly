@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { CustomSelect } from '../common/CustomSelect';
 import {
   Plus,
   Search,
@@ -124,17 +124,14 @@ export const ExpensesView = () => {
           />
         </div>
 
-        <select
+        <CustomSelect
           value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-700 focus:outline-none"
-        >
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {c === 'all' ? 'Todas las categorías' : c}
-            </option>
-          ))}
-        </select>
+          onChange={setSelectedCategory}
+          options={categories.map((c) => ({
+            value: c,
+            label: c === 'all' ? 'Todas las categorías' : c
+          }))}
+        />
       </div>
 
       {/* Expenses Table */}

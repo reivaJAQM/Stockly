@@ -9,6 +9,8 @@ import {
   Trash2,
   Banknote,
   ArrowRightLeft,
+  HandCoins,
+  AlertCircle,
   User,
   CheckCircle2,
   Package,
@@ -19,7 +21,7 @@ import {
 } from 'lucide-react';
 
 export const POSModal = ({ isOpen, onClose }) => {
-  const { data, createSale, formatCurrency, setSelectedReceiptOrder } = useApp();
+  const { data, createSale, formatCurrency, setSelectedReceiptOrder, showToast } = useApp();
 
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,6 +31,7 @@ export const POSModal = ({ isOpen, onClose }) => {
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Efectivo');
   const [cashGiven, setCashGiven] = useState('');
+  const [initialPayment, setInitialPayment] = useState('');
   const [discountPercent, setDiscountPercent] = useState(0);
 
   if (!isOpen) return null;
@@ -100,8 +103,21 @@ export const POSModal = ({ isOpen, onClose }) => {
   const taxAmount = 0;
   const cashChange = Number(cashGiven) > grandTotal ? Number(cashGiven) - grandTotal : 0;
 
+  const numInitialPayment = (paymentMethod === 'Crédito' || paymentMethod === 'Crédito / Fiado') ? Math.min(grandTotal, Math.max(0, Number(initialPayment || 0))) : grandTotal;
+  const creditBalanceDue = (paymentMethod === 'Crédito' || paymentMethod === 'Crédito / Fiado') ? Math.max(0, grandTotal - numInitialPayment) : 0;
+
   const handleCompleteSale = async () => {
     if (cart.length === 0) return;
+
+    if ((paymentMethod === 'Crédito' || paymentMethod === 'Crédito / Fiado') && (!selectedCustomer || !selectedCustomer.id)) {
+      showToast({
+        type: 'error',
+        title: 'Cliente Requerido',
+        message: 'Debes seleccionar o crear un cliente arriba para poder vender a crédito.'
+      });
+      setIsCustomerDropdownOpen(true);
+      return;
+    }
 
     const salePayload = {
       customer: selectedCustomer
@@ -112,6 +128,7 @@ export const POSModal = ({ isOpen, onClose }) => {
       tax: 0,
       discount: discountAmount,
       paymentMethod,
+      initialPayment: (paymentMethod === 'Crédito' || paymentMethod === 'Crédito / Fiado') ? numInitialPayment : grandTotal,
       cashGiven: paymentMethod === 'Efectivo' && Number(cashGiven) > 0 ? Number(cashGiven) : null,
       cashChange: paymentMethod === 'Efectivo' && Number(cashGiven) > 0 ? cashChange : 0,
       channel: 'Venta Directa',
@@ -127,6 +144,7 @@ export const POSModal = ({ isOpen, onClose }) => {
       const newOrder = await createSale(salePayload);
       setCart([]);
       setCashGiven('');
+      setInitialPayment('');
       onClose();
       // Open receipt modal with the REAL resolved order object
       if (newOrder) {
@@ -136,8 +154,8 @@ export const POSModal = ({ isOpen, onClose }) => {
           cashChange: salePayload.cashChange
         });
       }
-    } catch (err) {
-      console.error('Error al procesar la venta:', err);
+    } catch (error) {
+      console.error('Error al registrar venta:', error);
     }
   };
 
@@ -504,34 +522,120 @@ export const POSModal = ({ isOpen, onClose }) => {
 
           {/* Payment Method Selector & Totals */}
           <div className="pt-3 border-t border-slate-100 space-y-3 flex-shrink-0">
-            {/* Payment Method Tabs (Efectivo & Transferencia only) */}
+            {/* Payment Method Tabs (Efectivo, Transferencia, Crédito / Fiado) */}
             <div>
-              <label className="block text-[11px] font-bold text-slate-600 mb-1.5">Método de Pago</label>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <label className="block text-[11px] font-bold text-slate-600 mb-1.5">Método / Condición de Pago</label>
+              <div className="grid grid-cols-3 gap-1.5 text-xs">
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('Efectivo')}
-                  className={`py-2.5 px-3 rounded-2xl font-bold border flex items-center justify-center gap-2 transition-all ${paymentMethod === 'Efectivo'
+                  className={`py-2 px-2 rounded-2xl font-bold border flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all text-center ${
+                    paymentMethod === 'Efectivo'
                       ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-xs ring-1 ring-emerald-500/20'
                       : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
+                  }`}
                 >
-                  <Banknote className="w-4 h-4 text-emerald-600" />
+                  <Banknote className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
                   <span>Efectivo</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('Transferencia')}
-                  className={`py-2.5 px-3 rounded-2xl font-bold border flex items-center justify-center gap-2 transition-all ${paymentMethod === 'Transferencia'
+                  className={`py-2 px-2 rounded-2xl font-bold border flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all text-center ${
+                    paymentMethod === 'Transferencia'
                       ? 'bg-purple-50 border-purple-500 text-purple-700 shadow-xs ring-1 ring-purple-500/20'
                       : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
+                  }`}
                 >
-                  <ArrowRightLeft className="w-4 h-4 text-purple-600" />
-                  <span>Transferencia</span>
+                  <ArrowRightLeft className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" />
+                  <span>Transfer.</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentMethod('Crédito');
+                    if (!selectedCustomer) {
+                      setIsCustomerDropdownOpen(true);
+                    }
+                  }}
+                  className={`py-2 px-2 rounded-2xl font-bold border flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all text-center ${
+                    paymentMethod === 'Crédito' || paymentMethod === 'Crédito / Fiado'
+                      ? 'bg-amber-50 border-amber-500 text-amber-800 shadow-xs ring-1 ring-amber-500/20'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <HandCoins className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                  <span>Crédito</span>
                 </button>
               </div>
             </div>
+
+            {/* Crédito Calculator Panel */}
+            {(paymentMethod === 'Crédito' || paymentMethod === 'Crédito / Fiado') && (
+              <div className="space-y-2 p-3 rounded-2xl bg-amber-50/60 border border-amber-200/80">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-amber-900 font-extrabold text-[11px]">
+                    <HandCoins className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Venta a Crédito</span>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
+                    selectedCustomer ? 'bg-amber-200/70 text-amber-900' : 'bg-rose-100 text-rose-700 animate-pulse'
+                  }`}>
+                    {selectedCustomer ? `Cliente: ${selectedCustomer.name}` : 'Falta seleccionar cliente'}
+                  </span>
+                </div>
+
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
+                      Abono Inicial <span className="font-normal text-slate-400">(Opcional)</span>
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="$0.00 (Sin abono)"
+                      value={initialPayment}
+                      onChange={(e) => setInitialPayment(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-[10px] font-bold text-rose-700 mb-0.5">Saldo por Cobrar</label>
+                    <div className="px-3 py-1.5 bg-rose-600 rounded-xl text-xs font-extrabold text-white text-center shadow-xs">
+                      {formatCurrency(creditBalanceDue)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Abono Buttons */}
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setInitialPayment('0')}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-white border border-amber-200 text-amber-800 hover:bg-amber-100 transition-colors shadow-2xs"
+                  >
+                    $0 (Sin abono inicial)
+                  </button>
+                  {grandTotal > 0 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setInitialPayment(String((grandTotal * 0.25).toFixed(2)))}
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-white border border-amber-200 text-amber-800 hover:bg-amber-100 transition-colors shadow-2xs"
+                      >
+                        25%
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setInitialPayment(String((grandTotal * 0.5).toFixed(2)))}
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-white border border-amber-200 text-amber-800 hover:bg-amber-100 transition-colors shadow-2xs"
+                      >
+                        50%
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Quick Cash calculator if Efectivo is selected */}
             {paymentMethod === 'Efectivo' && (

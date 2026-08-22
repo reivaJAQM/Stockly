@@ -12,6 +12,7 @@ router.get('/', async (req, res) => {
         o.order_number AS "id",
         o.customer_id AS "customerId",
         json_build_object(
+          'id', o.customer_id,
           'name', COALESCE(o.customer_name, 'Cliente Mostrador'),
           'email', COALESCE(o.customer_email, 'general@cliente.com'),
           'phone', COALESCE(o.customer_phone, 'N/A')
@@ -21,6 +22,8 @@ router.get('/', async (req, res) => {
         COALESCE(o.tax, 0)::numeric(12,2) AS tax,
         COALESCE(o.discount, 0)::numeric(12,2) AS discount,
         COALESCE(o.total, 0)::numeric(12,2) AS total,
+        COALESCE(o.amount_paid, o.total)::numeric(12,2) AS "amountPaid",
+        COALESCE(o.balance_due, 0)::numeric(12,2) AS "balanceDue",
         o.payment_method AS "paymentMethod",
         o.channel,
         o.status,
@@ -29,17 +32,21 @@ router.get('/', async (req, res) => {
       ORDER BY o.created_at DESC
     `);
 
-    // Fetch items for each order
+    // Fetch items and payments for each order
     const orders = ordersRes.rows.map((o) => ({
       ...o,
       subtotal: Number(o.subtotal) || 0,
       total: Number(o.total) || 0,
       discount: Number(o.discount) || 0,
       tax: Number(o.tax) || 0,
-      items: []
+      amountPaid: Number(o.amountPaid) || 0,
+      balanceDue: Number(o.balanceDue) || 0,
+      items: [],
+      payments: []
     }));
 
     if (orders.length > 0) {
+      // Order items
       const itemsRes = await pool.query(`
         SELECT 
           order_id,
@@ -63,8 +70,36 @@ router.get('/', async (req, res) => {
         return acc;
       }, {});
 
+      // Order payments (abonos)
+      const paymentsRes = await pool.query(`
+        SELECT 
+          id,
+          order_id,
+          amount::numeric(12,2) AS amount,
+          payment_method AS "paymentMethod",
+          notes,
+          created_at AS "createdAt",
+          TO_CHAR(created_at, 'DD Mon YYYY, HH24:MI') AS "formattedDate"
+        FROM order_payments
+        ORDER BY created_at ASC
+      `);
+
+      const paymentsByOrder = paymentsRes.rows.reduce((acc, pay) => {
+        if (!acc[pay.order_id]) acc[pay.order_id] = [];
+        acc[pay.order_id].push({
+          id: pay.id,
+          amount: Number(pay.amount) || 0,
+          paymentMethod: pay.paymentMethod,
+          notes: pay.notes || '',
+          createdAt: pay.createdAt,
+          formattedDate: pay.formattedDate
+        });
+        return acc;
+      }, {});
+
       orders.forEach((order) => {
         order.items = itemsByOrder[order.db_id] || [];
+        order.payments = paymentsByOrder[order.db_id] || [];
       });
     }
 
@@ -75,7 +110,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST create sale (ATOMIC TRANSACTION)
+// POST create sale (ATOMIC TRANSACTION with Credit / Fiado support)
 router.post('/', async (req, res) => {
   const {
     customer,
@@ -85,6 +120,7 @@ router.post('/', async (req, res) => {
     discount,
     total,
     paymentMethod,
+    initialPayment,
     channel
   } = req.body;
 
@@ -101,13 +137,21 @@ router.post('/', async (req, res) => {
     const nextNum = (parseInt(countRes.rows[0].count, 10) + 1).toString().padStart(5, '0');
     const orderNumber = `#ORD-${nextNum}`;
 
+    const numTotal = Number(total || 0);
+    const isCredit = paymentMethod === 'Crédito' || paymentMethod === 'Crédito / Fiado';
+    const initPay = isCredit ? Math.min(numTotal, Math.max(0, Number(initialPayment || 0))) : numTotal;
+    const balanceDue = isCredit ? Math.max(0, numTotal - initPay) : 0;
+    const initialStatus = balanceDue <= 0 ? 'Completado' : 'Pendiente';
+
     // 2. Insert Order
     const orderRes = await client.query(
       `INSERT INTO orders (
         order_number, customer_id, customer_name, customer_email, customer_phone,
-        subtotal, tax, discount, total, payment_method, channel, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'Completado')
-      RETURNING id AS db_id, order_number AS "id", subtotal, tax, discount, total, payment_method AS "paymentMethod", channel, status, created_at AS "createdAt"`,
+        subtotal, tax, discount, total, amount_paid, balance_due, payment_method, channel, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING id AS db_id, order_number AS "id", subtotal, tax, discount, total, 
+                amount_paid AS "amountPaid", balance_due AS "balanceDue", 
+                payment_method AS "paymentMethod", channel, status, created_at AS "createdAt"`,
       [
         orderNumber,
         customer?.id ? Number(customer.id) : null,
@@ -117,14 +161,41 @@ router.post('/', async (req, res) => {
         Number(subtotal || total || 0),
         Number(tax || 0),
         Number(discount || 0),
-        Number(total || 0),
+        numTotal,
+        initPay,
+        balanceDue,
         paymentMethod || 'Efectivo',
-        channel || 'Venta Directa'
+        channel || 'Venta Directa',
+        initialStatus
       ]
     );
 
     const createdOrder = orderRes.rows[0];
-    const orderId = createdOrder.db_id; // numeric primary key for foreign keys
+    const orderId = createdOrder.db_id; // numeric primary key
+
+    // 2.1. If initial payment exists, register it in order_payments
+    const createdPayments = [];
+    if (initPay > 0) {
+      const payRes = await client.query(
+        `INSERT INTO order_payments (order_id, amount, payment_method, notes)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, amount, payment_method AS "paymentMethod", notes, created_at AS "createdAt"`,
+        [
+          orderId,
+          initPay,
+          isCredit ? 'Efectivo' : (paymentMethod || 'Efectivo'),
+          isCredit ? 'Abono inicial al momento de la venta' : 'Pago completo al contado'
+        ]
+      );
+      createdPayments.push({
+        id: payRes.rows[0].id,
+        amount: Number(payRes.rows[0].amount),
+        paymentMethod: payRes.rows[0].paymentMethod,
+        notes: payRes.rows[0].notes,
+        createdAt: payRes.rows[0].createdAt,
+        formattedDate: 'Hoy'
+      });
+    }
 
     // 3. Insert order items & update product stocks
     const createdItems = [];
@@ -168,28 +239,41 @@ router.post('/', async (req, res) => {
         productId: item.productId,
         name: item.name,
         quantity: item.quantity,
-        price: item.price
+        price: item.price,
+        subtotal: itemSubtotal
       });
     }
 
     // 4. Log activity
+    const activityDesc = isCredit
+      ? `Nueva venta a crédito ${orderNumber} (${customer?.name || 'Cliente'}). Total: $${numTotal.toFixed(2)}, Debe: $${balanceDue.toFixed(2)}`
+      : `Nueva venta ${orderNumber} ($${numTotal.toFixed(2)})`;
+
     await client.query(
       `INSERT INTO activity_logs (type, title)
        VALUES ('sale', $1)`,
-      [`Nueva venta ${orderNumber} ($${Number(total).toFixed(2)})`]
+      [activityDesc]
     );
 
     await client.query('COMMIT');
 
     const formattedOrder = {
       ...createdOrder,
+      subtotal: Number(createdOrder.subtotal),
+      tax: Number(createdOrder.tax),
+      discount: Number(createdOrder.discount),
+      total: Number(createdOrder.total),
+      amountPaid: Number(createdOrder.amountPaid),
+      balanceDue: Number(createdOrder.balanceDue),
       customer: {
+        id: customer?.id || null,
         name: customer?.name || 'Cliente Mostrador',
         email: customer?.email || 'general@cliente.com',
         phone: customer?.phone || 'N/A'
       },
       date: new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }),
-      items: createdItems
+      items: createdItems,
+      payments: createdPayments
     };
 
     res.status(201).json(formattedOrder);
@@ -197,6 +281,162 @@ router.post('/', async (req, res) => {
     await client.query('ROLLBACK');
     console.error('Error creating sale:', error);
     res.status(500).json({ error: 'Error al procesar la venta' });
+  } finally {
+    client.release();
+  }
+});
+
+// POST add payment / abono to an order
+router.post('/:id/payments', async (req, res) => {
+  const { id } = req.params;
+  const { amount, paymentMethod, notes } = req.body;
+
+  const payAmount = Number(amount);
+  if (!payAmount || payAmount <= 0) {
+    return res.status(400).json({ error: 'El monto del abono debe ser mayor a 0' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 1. Find and lock order
+    const orderRes = await client.query(
+      `SELECT id, order_number, customer_name, total, amount_paid, balance_due, status 
+       FROM orders 
+       WHERE order_number = $1 OR id::text = $1 FOR UPDATE`,
+      [id]
+    );
+
+    if (orderRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Orden no encontrada' });
+    }
+
+    const order = orderRes.rows[0];
+    const orderDbId = order.id;
+    const currentBalance = Number(order.balance_due || 0);
+
+    if (currentBalance <= 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Esta orden ya se encuentra totalmente saldada' });
+    }
+
+    const actualPayAmount = Math.min(payAmount, currentBalance);
+    const newAmountPaid = Number(order.amount_paid || 0) + actualPayAmount;
+    const newBalanceDue = Math.max(0, currentBalance - actualPayAmount);
+    const newStatus = newBalanceDue <= 0 ? 'Completado' : 'Pendiente';
+
+    // 2. Insert Payment
+    const paymentRes = await client.query(
+      `INSERT INTO order_payments (order_id, amount, payment_method, notes)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, amount, payment_method AS "paymentMethod", notes, created_at AS "createdAt",
+                 TO_CHAR(created_at, 'DD Mon YYYY, HH24:MI') AS "formattedDate"`,
+      [
+        orderDbId,
+        actualPayAmount,
+        paymentMethod || 'Efectivo',
+        notes || (newBalanceDue === 0 ? 'Liquidación total de la deuda' : 'Abono a cuenta')
+      ]
+    );
+
+    // 3. Update Order
+    await client.query(
+      `UPDATE orders 
+       SET amount_paid = $1, balance_due = $2, status = $3
+       WHERE id = $4`,
+      [newAmountPaid, newBalanceDue, newStatus, orderDbId]
+    );
+
+    // 4. Activity Log
+    await client.query(
+      `INSERT INTO activity_logs (type, title)
+       VALUES ('sale', $1)`,
+      [
+        `Abono de $${actualPayAmount.toFixed(2)} recibido para ${order.order_number} (${order.customer_name || 'Cliente'}). ${
+          newBalanceDue === 0 ? '¡Deuda saldada al 100%!' : `Resta: $${newBalanceDue.toFixed(2)}`
+        }`
+      ]
+    );
+
+    await client.query('COMMIT');
+
+    // 5. Fetch updated full order with items and all payments
+    const updatedOrderRes = await pool.query(
+      `SELECT 
+        o.id AS db_id,
+        o.order_number AS "id",
+        o.customer_id AS "customerId",
+        json_build_object(
+          'id', o.customer_id,
+          'name', COALESCE(o.customer_name, 'Cliente Mostrador'),
+          'email', COALESCE(o.customer_email, 'general@cliente.com'),
+          'phone', COALESCE(o.customer_phone, 'N/A')
+        ) AS "customer",
+        TO_CHAR(o.created_at, 'DD Mon YYYY') AS "date",
+        COALESCE(o.subtotal, 0)::numeric(12,2) AS subtotal,
+        COALESCE(o.tax, 0)::numeric(12,2) AS tax,
+        COALESCE(o.discount, 0)::numeric(12,2) AS discount,
+        COALESCE(o.total, 0)::numeric(12,2) AS total,
+        COALESCE(o.amount_paid, 0)::numeric(12,2) AS "amountPaid",
+        COALESCE(o.balance_due, 0)::numeric(12,2) AS "balanceDue",
+        o.payment_method AS "paymentMethod",
+        o.channel,
+        o.status,
+        o.created_at AS "createdAt"
+       FROM orders o
+       WHERE o.id = $1`,
+      [orderDbId]
+    );
+
+    const itemsRes = await pool.query(
+      `SELECT product_id AS "productId", product_name AS "name", quantity, unit_price AS "price", subtotal 
+       FROM order_items WHERE order_id = $1`,
+      [orderDbId]
+    );
+
+    const allPaymentsRes = await pool.query(
+      `SELECT id, amount::numeric(12,2) AS amount, payment_method AS "paymentMethod", notes, created_at AS "createdAt",
+              TO_CHAR(created_at, 'DD Mon YYYY, HH24:MI') AS "formattedDate"
+       FROM order_payments WHERE order_id = $1 ORDER BY created_at ASC`,
+      [orderDbId]
+    );
+
+    const fullOrder = {
+      ...updatedOrderRes.rows[0],
+      subtotal: Number(updatedOrderRes.rows[0].subtotal),
+      tax: Number(updatedOrderRes.rows[0].tax),
+      discount: Number(updatedOrderRes.rows[0].discount),
+      total: Number(updatedOrderRes.rows[0].total),
+      amountPaid: Number(updatedOrderRes.rows[0].amountPaid),
+      balanceDue: Number(updatedOrderRes.rows[0].balanceDue),
+      items: itemsRes.rows.map((it) => ({
+        productId: it.productId,
+        name: it.name,
+        quantity: Number(it.quantity),
+        price: Number(it.price),
+        subtotal: Number(it.subtotal)
+      })),
+      payments: allPaymentsRes.rows.map((p) => ({
+        id: p.id,
+        amount: Number(p.amount),
+        paymentMethod: p.paymentMethod,
+        notes: p.notes,
+        createdAt: p.createdAt,
+        formattedDate: p.formattedDate
+      }))
+    };
+
+    res.json({
+      message: 'Abono registrado exitosamente',
+      payment: paymentRes.rows[0],
+      order: fullOrder
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error registering payment:', error);
+    res.status(500).json({ error: 'Error al registrar el abono' });
   } finally {
     client.release();
   }
@@ -278,7 +518,7 @@ router.delete('/:id', async (req, res) => {
       }
     }
 
-    // 3. Delete order (cascade deletes order_items)
+    // 3. Delete order (cascade deletes order_items and order_payments)
     await client.query('DELETE FROM orders WHERE id = $1', [orderDbId]);
 
     // 4. Log activity

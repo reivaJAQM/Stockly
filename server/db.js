@@ -106,9 +106,30 @@ export const initDB = async () => {
         tax NUMERIC(12,2) NOT NULL,
         discount NUMERIC(12,2) DEFAULT 0.00,
         total NUMERIC(12,2) NOT NULL,
+        amount_paid NUMERIC(12,2) DEFAULT 0.00,
+        balance_due NUMERIC(12,2) DEFAULT 0.00,
         payment_method VARCHAR(50) NOT NULL DEFAULT 'Efectivo',
         channel VARCHAR(50) NOT NULL DEFAULT 'Tienda física',
         status VARCHAR(50) NOT NULL DEFAULT 'Completado',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Auto-migration for existing orders table
+    await client.query(`
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS amount_paid NUMERIC(12,2) DEFAULT 0.00;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS balance_due NUMERIC(12,2) DEFAULT 0.00;
+      UPDATE orders SET amount_paid = total, balance_due = 0.00 WHERE (amount_paid = 0.00 OR amount_paid IS NULL) AND status = 'Completado';
+    `);
+
+    // 5.1. Order Payments (Historial de Abonos a órdenes a crédito)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS order_payments (
+        id SERIAL PRIMARY KEY,
+        order_id INT REFERENCES orders(id) ON DELETE CASCADE,
+        amount NUMERIC(12,2) NOT NULL,
+        payment_method VARCHAR(50) NOT NULL DEFAULT 'Efectivo',
+        notes TEXT DEFAULT '',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);

@@ -3,7 +3,7 @@ import { pool } from '../db.js';
 
 const router = express.Router();
 
-// GET all customers with aggregated spending
+// GET all customers with aggregated spending and debt
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -14,14 +14,23 @@ router.get('/', async (req, res) => {
         c.phone,
         c.notes,
         TO_CHAR(c.created_at, 'DD Mon YYYY') AS "joinedDate",
-        COALESCE(SUM(o.total), 0) AS "totalSpent",
+        COALESCE(SUM(o.total), 0)::numeric(12,2) AS "totalSpent",
+        COALESCE(SUM(o.balance_due), 0)::numeric(12,2) AS "totalDebt",
         COUNT(o.id) AS "totalOrders"
       FROM customers c
       LEFT JOIN orders o ON o.customer_id = c.id
       GROUP BY c.id
       ORDER BY c.id DESC
     `);
-    res.json(result.rows);
+    
+    const customers = result.rows.map((c) => ({
+      ...c,
+      totalSpent: Number(c.totalSpent) || 0,
+      totalDebt: Number(c.totalDebt) || 0,
+      totalOrders: Number(c.totalOrders) || 0
+    }));
+
+    res.json(customers);
   } catch (error) {
     console.error('Error fetching customers:', error);
     res.status(500).json({ error: 'Error al obtener clientes' });

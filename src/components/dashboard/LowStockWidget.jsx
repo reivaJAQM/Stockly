@@ -66,7 +66,7 @@ export const LowStockWidget = () => {
 
           {lowStockProducts.length === 0 && (
             <div className="text-center py-6 text-xs text-slate-400">
-              🎉 Todo el inventario se encuentra en niveles óptimos.
+              Todo el inventario se encuentra en niveles óptimos.
             </div>
           )}
         </div>
