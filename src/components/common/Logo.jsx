@@ -82,22 +82,13 @@ export const Logo = ({ size = 'md', showText = true, className = '', isDark = tr
 
       {/* Typography */}
       {showText && (
-        <div className="flex flex-col">
-          <div className="flex items-center gap-1.5 leading-none">
-            <span
-              className={`font-extrabold tracking-tight font-sans ${currentSize.text} ${
-                isDark ? 'text-white' : 'text-slate-900'
-              }`}
-            >
-              Stock<span className="text-blue-500">ly</span>
-            </span>
-          </div>
+        <div className="flex flex-col justify-center">
           <span
-            className={`font-medium tracking-wide mt-1 ${currentSize.subtext} ${
-              isDark ? 'text-slate-400' : 'text-slate-500'
+            className={`font-extrabold tracking-tight font-sans ${currentSize.text} ${
+              isDark ? 'text-white' : 'text-slate-900'
             }`}
           >
-            Gestión de Negocio
+            Stock<span className="text-blue-500">ly</span>
           </span>
         </div>
       )}

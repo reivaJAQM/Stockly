@@ -72,6 +72,20 @@ export const initDB = async () => {
       );
     `);
 
+    // 3.1. Services (Servicios digitales / intangibles sin control de stock ni costos)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS services (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(200) NOT NULL,
+        category VARCHAR(100) DEFAULT 'Servicios',
+        default_price NUMERIC(12,2) DEFAULT 0.00,
+        total_sales INT DEFAULT 0,
+        total_revenue NUMERIC(12,2) DEFAULT 0.00,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // 4. Products
     await client.query(`
       CREATE TABLE IF NOT EXISTS products (
@@ -140,11 +154,14 @@ export const initDB = async () => {
         id SERIAL PRIMARY KEY,
         order_id INT REFERENCES orders(id) ON DELETE CASCADE,
         product_id INT REFERENCES products(id) ON DELETE SET NULL,
+        service_id INT REFERENCES services(id) ON DELETE SET NULL,
         product_name VARCHAR(200) NOT NULL,
         quantity INT NOT NULL,
         unit_price NUMERIC(12,2) NOT NULL,
         subtotal NUMERIC(12,2) NOT NULL
       );
+
+      ALTER TABLE order_items ADD COLUMN IF NOT EXISTS service_id INT REFERENCES services(id) ON DELETE SET NULL;
     `);
 
     // 7. Expenses

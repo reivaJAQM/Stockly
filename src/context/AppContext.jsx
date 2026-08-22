@@ -42,11 +42,11 @@ const defaultState = {
     ]
   },
   products: [],
+  services: [],
   categories: [],
   orders: [],
   expenses: [],
   customers: [],
-  suppliers: [],
   activityLog: [],
   notifications: []
 };
@@ -61,6 +61,8 @@ export const AppProvider = ({ children }) => {
   const [isPOSOpen, setIsPOSOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+  const [editingService, setEditingService] = useState(null);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [isAdjustStockModalOpen, setIsAdjustStockModalOpen] = useState(false);
@@ -84,20 +86,20 @@ export const AppProvider = ({ children }) => {
       const [
         settings,
         products,
+        services,
         categories,
         sales,
         expenses,
         customers,
-        suppliers,
         dashboardStats
       ] = await Promise.all([
         api.getSettings().catch(() => defaultState.storeInfo),
         api.getProducts().catch(() => []),
+        api.getServices().catch(() => []),
         api.getCategories().catch(() => []),
         api.getSales().catch(() => []),
         api.getExpenses().catch(() => []),
         api.getCustomers().catch(() => []),
-        api.getSuppliers().catch(() => []),
         api.getDashboardStats().catch(() => ({
           kpis: defaultState.kpis,
           salesChannels: defaultState.salesChannels,
@@ -109,11 +111,11 @@ export const AppProvider = ({ children }) => {
       setData({
         storeInfo: settings,
         products: products || [],
+        services: services || [],
         categories: categories || [],
         orders: sales || [],
         expenses: expenses || [],
         customers: customers || [],
-        suppliers: suppliers || [],
         kpis: dashboardStats.kpis || defaultState.kpis,
         salesChannels: dashboardStats.salesChannels || defaultState.salesChannels,
         salesChartData: dashboardStats.salesChartData || [],
@@ -364,17 +366,6 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const addSupplier = async (supplierData) => {
-    try {
-      const created = await api.createSupplier(supplierData);
-      await refreshData();
-      return created;
-    } catch (error) {
-      console.error("Error adding supplier:", error);
-      alert("Error al guardar proveedor en PostgreSQL.");
-    }
-  };
-
   // Categories in PostgreSQL
   const addCategory = async (categoryName, color) => {
     try {
@@ -392,6 +383,66 @@ export const AppProvider = ({ children }) => {
       await refreshData();
     } catch (error) {
       console.error("Error deleting category:", error);
+    }
+  };
+
+  // Services (Servicios digitales / ingresos sin costo)
+  const addService = async (serviceData) => {
+    try {
+      const created = await api.createService(serviceData);
+      await refreshData();
+      showToast({
+        type: 'success',
+        title: 'Servicio Registrado',
+        message: `El servicio "${serviceData.name}" se guardó en el catálogo.`
+      });
+      return created;
+    } catch (error) {
+      console.error("Error adding service:", error);
+      showToast({
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudo registrar el servicio.'
+      });
+    }
+  };
+
+  const updateService = async (id, serviceData) => {
+    try {
+      const updated = await api.updateService(id, serviceData);
+      await refreshData();
+      showToast({
+        type: 'success',
+        title: 'Servicio Actualizado',
+        message: 'Los datos del servicio han sido guardados.'
+      });
+      return updated;
+    } catch (error) {
+      console.error("Error updating service:", error);
+      showToast({
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudo actualizar el servicio.'
+      });
+    }
+  };
+
+  const deleteService = async (id) => {
+    try {
+      await api.deleteService(id);
+      await refreshData();
+      showToast({
+        type: 'info',
+        title: 'Servicio Eliminado',
+        message: 'El servicio fue eliminado del catálogo.'
+      });
+    } catch (error) {
+      console.error("Error deleting service:", error);
+      showToast({
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudo eliminar el servicio.'
+      });
     }
   };
 
@@ -443,6 +494,10 @@ export const AppProvider = ({ children }) => {
         setIsProductModalOpen,
         editingProduct,
         setEditingProduct,
+        isServiceModalOpen,
+        setIsServiceModalOpen,
+        editingService,
+        setEditingService,
         isExpenseModalOpen,
         setIsExpenseModalOpen,
         editingExpense,
@@ -460,6 +515,9 @@ export const AppProvider = ({ children }) => {
         addProduct,
         updateProduct,
         deleteProduct,
+        addService,
+        updateService,
+        deleteService,
         adjustStock,
         createSale,
         addOrderPayment,
@@ -470,7 +528,6 @@ export const AppProvider = ({ children }) => {
         addCustomer,
         updateCustomer,
         deleteCustomer,
-        addSupplier,
         addCategory,
         deleteCategory,
         updateSettings,

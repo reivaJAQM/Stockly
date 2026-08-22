@@ -178,23 +178,6 @@ export const api = {
     return res.json();
   },
 
-  // Suppliers
-  async getSuppliers() {
-    const res = await fetch(`${API_BASE}/suppliers`);
-    if (!res.ok) throw new Error('Error al obtener proveedores');
-    return res.json();
-  },
-
-  async createSupplier(supplierData) {
-    const res = await fetch(`${API_BASE}/suppliers`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(supplierData)
-    });
-    if (!res.ok) throw new Error('Error al registrar proveedor');
-    return res.json();
-  },
-
   // Categories (PostgreSQL)
   async getCategories() {
     const res = await fetch(`${API_BASE}/categories`);
@@ -220,37 +203,38 @@ export const api = {
     return res.json();
   },
 
-  // WhatsApp Web Background Service
-  async getWhatsAppStatus() {
-    const res = await fetch(`${API_BASE}/whatsapp/status`);
-    if (!res.ok) throw new Error('Error al consultar estado de WhatsApp');
+  // Services (Servicios digitales sin inventario)
+  async getServices() {
+    const res = await fetch(`${API_BASE}/services`);
+    if (!res.ok) throw new Error('Error al obtener servicios');
     return res.json();
   },
 
-  async initWhatsApp() {
-    const res = await fetch(`${API_BASE}/whatsapp/init`, {
-      method: 'POST'
-    });
-    if (!res.ok) throw new Error('Error al iniciar WhatsApp');
-    return res.json();
-  },
-
-  async sendWhatsAppMessage(payload) {
-    const res = await fetch(`${API_BASE}/whatsapp/send`, {
+  async createService(serviceData) {
+    const res = await fetch(`${API_BASE}/services`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(serviceData)
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error al enviar mensaje de WhatsApp');
-    return data;
+    if (!res.ok) throw new Error('Error al registrar servicio');
+    return res.json();
   },
 
-  async disconnectWhatsApp() {
-    const res = await fetch(`${API_BASE}/whatsapp/logout`, {
-      method: 'POST'
+  async updateService(id, serviceData) {
+    const res = await fetch(`${API_BASE}/services/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(serviceData)
     });
-    if (!res.ok) throw new Error('Error al desconectar WhatsApp');
+    if (!res.ok) throw new Error('Error al actualizar servicio');
+    return res.json();
+  },
+
+  async deleteService(id) {
+    const res = await fetch(`${API_BASE}/services/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Error al eliminar servicio');
     return res.json();
   }
 };

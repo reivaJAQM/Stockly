@@ -201,13 +201,16 @@ router.post('/', async (req, res) => {
     const createdItems = [];
     for (const item of items) {
       const itemSubtotal = Number(item.price) * Number(item.quantity);
+      const isProduct = item.productId && !item.isService;
+      const srvId = item.serviceId || (item.isService && !item.productId ? Number(item.id || null) : null);
       
       await client.query(
-        `INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, subtotal)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
+        `INSERT INTO order_items (order_id, product_id, service_id, product_name, quantity, unit_price, subtotal)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
           orderId,
-          item.productId ? Number(item.productId) : null,
+          isProduct ? Number(item.productId) : null,
+          srvId ? Number(srvId) : null,
           item.name,
           Number(item.quantity),
           Number(item.price),
@@ -215,8 +218,8 @@ router.post('/', async (req, res) => {
         ]
       );
 
-      // Decrement stock & increment units_sold & total_revenue in products table
-      if (item.productId) {
+      // If it's a physical product, decrement stock & increment units_sold & total_revenue in products table
+      if (isProduct) {
         await client.query(
           `UPDATE products 
            SET stock = GREATEST(0, stock - $1),
@@ -236,7 +239,9 @@ router.post('/', async (req, res) => {
       }
 
       createdItems.push({
-        productId: item.productId,
+        productId: isProduct ? item.productId : null,
+        serviceId: srvId,
+        isService: !isProduct,
         name: item.name,
         quantity: item.quantity,
         price: item.price,

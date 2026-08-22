@@ -7,10 +7,10 @@ import productsRouter from './routes/products.js';
 import salesRouter from './routes/sales.js';
 import expensesRouter from './routes/expenses.js';
 import customersRouter from './routes/customers.js';
-import suppliersRouter from './routes/suppliers.js';
 import settingsRouter from './routes/settings.js';
 import dashboardRouter from './routes/dashboard.js';
 import categoriesRouter from './routes/categories.js';
+import servicesRouter from './routes/services.js';
 
 dotenv.config();
 
@@ -23,10 +23,10 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Routes
 app.use('/api/products', productsRouter);
+app.use('/api/services', servicesRouter);
 app.use('/api/sales', salesRouter);
 app.use('/api/expenses', expensesRouter);
 app.use('/api/customers', customersRouter);
-app.use('/api/suppliers', suppliersRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/categories', categoriesRouter);

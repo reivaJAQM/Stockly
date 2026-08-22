@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { CustomSelect } from '../common/CustomSelect';
 import {
   Settings,
   Store,
@@ -14,6 +15,16 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
+const CURRENCY_SYMBOLS = {
+  USD: '$',
+  MXN: '$',
+  EUR: '€',
+  COP: '$',
+  ARS: '$',
+  CLP: '$',
+  PEN: 'S/'
+};
+
 export const SettingsView = () => {
   const { data, updateSettings } = useApp();
 
@@ -21,7 +32,6 @@ export const SettingsView = () => {
     name: data.storeInfo?.name || 'Mi Negocio',
     currency: data.storeInfo?.currency || 'USD',
     currencySymbol: data.storeInfo?.currencySymbol || '$',
-    taxRate: data.storeInfo?.taxRate || 16,
     address: data.storeInfo?.address || '',
     phone: data.storeInfo?.phone || '',
     userName: data.storeInfo?.user?.name || 'Alejandro',
@@ -32,11 +42,12 @@ export const SettingsView = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    const symbol = CURRENCY_SYMBOLS[formData.currency] || '$';
     await updateSettings({
       name: formData.name,
       currency: formData.currency,
-      currencySymbol: formData.currencySymbol,
-      taxRate: Number(formData.taxRate),
+      currencySymbol: symbol,
+      taxRate: 0,
       address: formData.address,
       phone: formData.phone,
       user: {
@@ -140,55 +151,39 @@ export const SettingsView = () => {
           </div>
         </div>
 
-        {/* Currency & Tax Rates Card */}
+        {/* Currency Card */}
         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
           <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
             <DollarSign className="w-5 h-5 text-emerald-600" />
-            <h3 className="font-bold text-sm text-slate-900">Moneda e Impuestos</h3>
+            <h3 className="font-bold text-sm text-slate-900">Moneda Principal</h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Moneda Principal</label>
-              <select
-                value={formData.currency}
-                onChange={(e) => {
-                  const symbol = e.target.value === 'EUR' ? '€' : '$';
-                  setFormData({ ...formData, currency: e.target.value, currencySymbol: symbol });
-                }}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none text-slate-800 bg-white"
-              >
-                <option value="USD">USD ($) Dólar estadounidense</option>
-                <option value="MXN">MXN ($) Peso mexicano</option>
-                <option value="EUR">EUR (€) Euro</option>
-                <option value="COP">COP ($) Peso colombiano</option>
-                <option value="ARS">ARS ($) Peso argentino</option>
-                <option value="CLP">CLP ($) Peso chileno</option>
-                <option value="PEN">PEN (S/) Sol peruano</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Símbolo Monetario</label>
-              <input
-                type="text"
-                value={formData.currencySymbol}
-                onChange={(e) => setFormData({ ...formData, currencySymbol: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none text-slate-800 font-bold"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Tasa de Impuesto / IVA (%)</label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={formData.taxRate}
-                onChange={(e) => setFormData({ ...formData, taxRate: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none text-slate-800 font-bold"
-              />
-            </div>
+          <div className="max-w-md space-y-1.5">
+            <label className="block font-semibold text-slate-700">Moneda del Negocio</label>
+            <p className="text-[11px] text-slate-400 font-medium mb-2">
+              Selecciona la divisa con la que se calcularán los precios, ventas y reportes de Stockly.
+            </p>
+            <CustomSelect
+              value={formData.currency}
+              onChange={(val) => {
+                setFormData({
+                  ...formData,
+                  currency: val,
+                  currencySymbol: CURRENCY_SYMBOLS[val] || '$'
+                });
+              }}
+              options={[
+                { value: 'USD', label: 'USD ($) - Dólar estadounidense' },
+                { value: 'MXN', label: 'MXN ($) - Peso mexicano' },
+                { value: 'EUR', label: 'EUR (€) - Euro' },
+                { value: 'COP', label: 'COP ($) - Peso colombiano' },
+                { value: 'ARS', label: 'ARS ($) - Peso argentino' },
+                { value: 'CLP', label: 'CLP ($) - Peso chileno' },
+                { value: 'PEN', label: 'PEN (S/) - Sol peruano' }
+              ]}
+              className="w-full"
+              menuClassName="w-full"
+            />
           </div>
         </div>
 

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { CustomSelect } from '../common/CustomSelect';
-import { IconSuppliers } from '../common/StocklyIcons';
 import {
   X,
   Package,
@@ -34,7 +33,6 @@ export const ProductModal = ({ isOpen, onClose, productToEdit }) => {
     sellPrice: '',
     stock: '10',
     minStock: '5',
-    supplierId: '',
     image: ''
   });
 
@@ -51,11 +49,6 @@ export const ProductModal = ({ isOpen, onClose, productToEdit }) => {
     label: cat
   }));
 
-  const supplierOptions = (data.suppliers || []).map((s) => ({
-    value: String(s.id),
-    label: s.name
-  }));
-
   useEffect(() => {
     if (productToEdit) {
       setFormData({
@@ -67,7 +60,6 @@ export const ProductModal = ({ isOpen, onClose, productToEdit }) => {
         sellPrice: productToEdit.sellPrice || '',
         stock: String(productToEdit.stock ?? '0'),
         minStock: String(productToEdit.minStock ?? '5'),
-        supplierId: productToEdit.supplierId ? String(productToEdit.supplierId) : '',
         image: productToEdit.image || ''
       });
       setShowUrlInput(Boolean(productToEdit.image && productToEdit.image.startsWith('http')));
@@ -82,7 +74,6 @@ export const ProductModal = ({ isOpen, onClose, productToEdit }) => {
         sellPrice: '',
         stock: '10',
         minStock: '5',
-        supplierId: data.suppliers?.[0] ? String(data.suppliers[0].id) : '',
         image: ''
       });
       setShowUrlInput(false);
@@ -183,8 +174,7 @@ export const ProductModal = ({ isOpen, onClose, productToEdit }) => {
       costPrice: Number(formData.costPrice || 0),
       sellPrice: Number(formData.sellPrice || 0),
       stock: parseInt(formData.stock || 0, 10),
-      minStock: parseInt(formData.minStock || 5, 10),
-      supplierId: formData.supplierId ? Number(formData.supplierId) : null
+      minStock: parseInt(formData.minStock || 5, 10)
     };
 
     if (productToEdit) {
@@ -241,8 +231,8 @@ export const ProductModal = ({ isOpen, onClose, productToEdit }) => {
               </div>
             </div>
 
-            {/* Section 2: Custom Dropdowns (Category & Supplier) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Section 2: Custom Dropdown (Category) */}
+            <div>
               <CustomSelect
                 label="Categoría"
                 options={categoryOptions}
@@ -253,18 +243,6 @@ export const ProductModal = ({ isOpen, onClose, productToEdit }) => {
                 placeholder={categoryOptions.length === 0 ? "Crear primera categoría" : "Seleccionar o crear categoría"}
                 customPlaceholder="Escribe el nombre de la categoría..."
                 icon={Tag}
-              />
-
-              <CustomSelect
-                label="Proveedor Asociado"
-                options={[
-                  { value: '', label: 'Sin proveedor asignado' },
-                  ...supplierOptions
-                ]}
-                value={formData.supplierId}
-                onChange={(val) => setFormData({ ...formData, supplierId: val })}
-                placeholder="Seleccionar proveedor"
-                icon={IconSuppliers}
               />
             </div>
 

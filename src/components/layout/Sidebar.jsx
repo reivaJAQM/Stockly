@@ -8,16 +8,15 @@ import {
   IconSales,
   IconExpenses,
   IconCustomers,
-  IconSuppliers,
   IconReports,
-  IconDiscounts,
   IconSettings
 } from '../common/StocklyIcons';
 import {
   ChevronDown,
   ChevronRight,
   Store,
-  Sparkles
+  Sparkles,
+  Zap
 } from 'lucide-react';
 
 export const Sidebar = ({ isOpen, setIsOpen }) => {
@@ -26,10 +25,10 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: IconDashboard },
     { id: 'inventory', label: 'Inventario', icon: IconInventory },
+    { id: 'services', label: 'Servicios', icon: Zap },
     { id: 'sales', label: 'Ventas', icon: IconSales },
     { id: 'expenses', label: 'Gastos', icon: IconExpenses },
     { id: 'customers', label: 'Clientes', icon: IconCustomers },
-    { id: 'suppliers', label: 'Proveedores', icon: IconSuppliers },
     { id: 'charts', label: 'Gráficos', icon: IconReports },
     { id: 'settings', label: 'Configuración', icon: IconSettings },
   ];
