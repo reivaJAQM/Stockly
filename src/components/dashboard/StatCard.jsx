@@ -5,6 +5,7 @@ export const StatCard = ({
   value,
   icon: Icon,
   iconBg = "bg-blue-50 border-blue-100 text-blue-600",
+  valueColor = "text-slate-900",
   onClick
 }) => {
   return (
@@ -21,7 +22,7 @@ export const StatCard = ({
           <span className="text-xs font-semibold text-slate-500 tracking-tight group-hover:text-blue-600 transition-colors">
             {title}
           </span>
-          <h3 className="text-2xl lg:text-3xl font-extrabold text-slate-900 mt-0.5 tracking-tight">
+          <h3 className={`text-2xl lg:text-3xl font-extrabold mt-0.5 tracking-tight ${valueColor}`}>
             {value}
           </h3>
         </div>

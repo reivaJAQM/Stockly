@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { CustomSelect } from '../common/CustomSelect';
+import { StatCard } from '../dashboard/StatCard';
 import {
   Plus,
   Search,
@@ -108,49 +109,36 @@ export const InventoryView = () => {
 
       {/* Valuation Metrics Banner */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-3xl border border-slate-100/90 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
-            <Boxes className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[11px] font-semibold text-slate-400">Total Productos</span>
-            <h4 className="text-xl font-extrabold text-slate-900">{totalProducts}</h4>
-            <span className="text-[10px] text-slate-500 font-medium">{totalStockUnits} unidades en stock</span>
-          </div>
-        </div>
+        <StatCard
+          title="Total Productos"
+          value={totalProducts}
+          icon={Boxes}
+          iconBg="bg-blue-50 border-blue-100 text-blue-600"
+        />
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-100/90 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-            <TrendingUp className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[11px] font-semibold text-slate-400">Valor en Costo</span>
-            <h4 className="text-xl font-extrabold text-emerald-600">{formatCurrency(totalInventoryCost)}</h4>
-            <span className="text-[10px] text-slate-400">Inversión actual</span>
-          </div>
-        </div>
+        <StatCard
+          title="Valor en Costo"
+          value={formatCurrency(totalInventoryCost)}
+          icon={TrendingUp}
+          iconBg="bg-emerald-50 border-emerald-100 text-emerald-600"
+          valueColor="text-emerald-600"
+        />
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-100/90 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center">
-            <DollarSign className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[11px] font-semibold text-slate-400">Valor en Venta</span>
-            <h4 className="text-xl font-extrabold text-violet-600">{formatCurrency(totalInventoryRetail)}</h4>
-            <span className="text-[10px] text-slate-400">Retorno esperado</span>
-          </div>
-        </div>
+        <StatCard
+          title="Valor en Venta"
+          value={formatCurrency(totalInventoryRetail)}
+          icon={DollarSign}
+          iconBg="bg-violet-50 border-violet-100 text-violet-600"
+          valueColor="text-violet-600"
+        />
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-100/90 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
-            <AlertTriangle className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[11px] font-semibold text-slate-400">Stock Crítico / Bajo</span>
-            <h4 className="text-xl font-extrabold text-amber-600">{lowStockCount}</h4>
-            <span className="text-[10px] text-slate-400">Requiere reabastecimiento</span>
-          </div>
-        </div>
+        <StatCard
+          title="Stock Crítico / Bajo"
+          value={lowStockCount}
+          icon={AlertTriangle}
+          iconBg="bg-amber-50 border-amber-100 text-amber-600"
+          valueColor="text-amber-600"
+        />
       </div>
 
       {/* Search, Filter & Count Bar */}
