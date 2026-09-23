@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { StatCard } from '../dashboard/StatCard';
 import { CustomSelect } from '../common/CustomSelect';
 import {
   Plus,
@@ -69,47 +70,26 @@ export const ExpensesView = () => {
 
       {/* Financial Health Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Total Expenses */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
-            <TrendingDown className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[11px] font-semibold text-slate-400">Total Gastos Registrados</span>
-            <h4 className="text-xl font-extrabold text-rose-600">{formatCurrency(totalExpenses)}</h4>
-            <span className="text-[10px] text-slate-500 font-medium">{expenses.length} egresos reportados</span>
-          </div>
-        </div>
+        <StatCard
+          title="Total Gastos"
+          value={formatCurrency(totalExpenses)}
+          icon={TrendingDown}
+          iconBg="bg-rose-50 border-rose-100 text-rose-600"
+        />
 
-        {/* Total Revenues */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
-            <DollarSign className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[11px] font-semibold text-slate-400">Ingresos Totales (Ventas)</span>
-            <h4 className="text-xl font-extrabold text-slate-900">{formatCurrency(totalSales)}</h4>
-            <span className="text-[10px] text-emerald-600 font-medium">Facturación acumulada</span>
-          </div>
-        </div>
+        <StatCard
+          title="Ingresos Totales"
+          value={formatCurrency(totalSales)}
+          icon={DollarSign}
+          iconBg="bg-blue-50 border-blue-100 text-blue-600"
+        />
 
-        {/* Net Real Profit */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs flex items-center gap-4">
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-            netProfit >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
-          }`}>
-            <Wallet className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[11px] font-semibold text-slate-400">Utilidad Neta Real</span>
-            <h4 className={`text-xl font-extrabold ${netProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {formatCurrency(netProfit)}
-            </h4>
-            <span className="text-[10px] font-bold text-slate-600">
-              {profitMargin}% de margen sobre ventas
-            </span>
-          </div>
-        </div>
+        <StatCard
+          title="Utilidad Neta"
+          value={formatCurrency(netProfit)}
+          icon={Wallet}
+          iconBg={netProfit >= 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-rose-50 border-rose-100 text-rose-600'}
+        />
       </div>
 
       {/* Filter and Search Bar */}
@@ -135,77 +115,90 @@ export const ExpensesView = () => {
         />
       </div>
 
-      {/* Expenses Table */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+      {/* Expenses Table - Stockly Dashboard Style */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-100/90 shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="bg-slate-50/70 border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                <th className="py-3.5 px-6">Concepto / Gasto</th>
-                <th className="py-3.5 px-4">Categoría</th>
-                <th className="py-3.5 px-4">Fecha</th>
-                <th className="py-3.5 px-4">Proveedor / Beneficiario</th>
-                <th className="py-3.5 px-4">Método</th>
-                <th className="py-3.5 px-4">Monto</th>
-                <th className="py-3.5 px-6 text-right">Acción</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium">
-              {filteredExpenses.map((expense) => (
-                <tr key={expense.id} className="hover:bg-slate-50/60 transition-colors">
-                  <td className="py-3.5 px-6">
-                    <p className="font-bold text-slate-900">{expense.concept}</p>
-                    {expense.notes && (
-                      <span className="text-[10px] text-slate-400">{expense.notes}</span>
-                    )}
-                  </td>
-
-                  <td className="py-3.5 px-4">
-                    <span className="px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-100 rounded-lg text-[11px] font-semibold">
-                      {expense.category}
-                    </span>
-                  </td>
-
-                  <td className="py-3.5 px-4 text-slate-500">{expense.date}</td>
-
-                  <td className="py-3.5 px-4 text-slate-700 font-medium">
-                    {expense.supplier || 'N/A'}
-                  </td>
-
-                  <td className="py-3.5 px-4 text-slate-600">
-                    {expense.paymentMethod}
-                  </td>
-
-                  <td className="py-3.5 px-4 font-bold text-rose-600 text-sm">
-                    -{formatCurrency(expense.amount)}
-                  </td>
-
-                  <td className="py-3.5 px-6 text-right">
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`¿Eliminar gasto "${expense.concept}"?`)) {
-                          deleteExpense(expense.id);
-                        }
-                      }}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                      title="Eliminar gasto"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {filteredExpenses.length === 0 && (
-            <div className="p-12 text-center text-slate-400 space-y-2">
+          {filteredExpenses.length === 0 ? (
+            <div className="py-14 text-center text-slate-400 space-y-2">
               <Receipt className="w-10 h-10 mx-auto text-slate-300" />
-              <p className="font-semibold text-sm">No se encontraron gastos</p>
-              <p className="text-xs">Usa el botón "Registrar Gasto" para agregar tu primer egreso.</p>
+              <p className="font-bold text-slate-700 text-sm">No se encontraron gastos</p>
+              <p className="text-xs text-slate-400">Usa el botón "Registrar Gasto" para agregar tu primer egreso.</p>
             </div>
+          ) : (
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-white z-10">
+                <tr className="text-[11px] font-semibold text-slate-400 border-b border-slate-100/90 pb-3">
+                  <th className="pb-3 px-3 text-left font-semibold">Concepto / Gasto</th>
+                  <th className="pb-3 px-3 text-center font-semibold">Categoría</th>
+                  <th className="pb-3 px-3 text-center font-semibold">Fecha</th>
+                  <th className="pb-3 px-3 text-center font-semibold">Proveedor</th>
+                  <th className="pb-3 px-3 text-center font-semibold">Método</th>
+                  <th className="pb-3 px-3 text-center font-semibold">Monto</th>
+                  <th className="pb-3 px-3 text-center font-semibold">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50 font-medium">
+                {filteredExpenses.map((expense) => (
+                  <tr key={expense.id} className="hover:bg-slate-50/90 transition-colors group">
+                    <td className="py-3.5 px-3 text-left">
+                      <p className="font-bold text-slate-800 text-xs">{expense.concept}</p>
+                      {expense.notes && (
+                        <span className="text-[10px] text-slate-400">{expense.notes}</span>
+                      )}
+                    </td>
+
+                    <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                      <span className="inline-block px-2.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-200/80 rounded-full text-[10px] font-bold">
+                        {expense.category}
+                      </span>
+                    </td>
+
+                    <td className="py-3.5 px-3 text-center text-slate-500 text-[11px] whitespace-nowrap">
+                      {expense.date}
+                    </td>
+
+                    <td className="py-3.5 px-3 text-center text-slate-700 text-xs">
+                      {expense.supplier || 'N/A'}
+                    </td>
+
+                    <td className="py-3.5 px-3 text-center text-slate-600 text-xs whitespace-nowrap">
+                      {expense.paymentMethod}
+                    </td>
+
+                    <td className="py-3.5 px-3 text-center font-extrabold text-rose-600 text-xs tabular-nums whitespace-nowrap">
+                      -{formatCurrency(expense.amount)}
+                    </td>
+
+                    <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`¿Eliminar gasto "${expense.concept}"?`)) {
+                            deleteExpense(expense.id);
+                          }
+                        }}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                        title="Eliminar gasto"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
+
+        {filteredExpenses.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-[11px] text-slate-400 font-medium">
+              Mostrando {filteredExpenses.length} {filteredExpenses.length === 1 ? 'gasto' : 'gastos'}
+            </span>
+            <span className="text-[11px] font-bold text-slate-600">
+              Total: -{formatCurrency(filteredExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0))}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

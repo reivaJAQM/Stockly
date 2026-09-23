@@ -121,7 +121,6 @@ export const InventoryView = () => {
           value={formatCurrency(totalInventoryCost)}
           icon={TrendingUp}
           iconBg="bg-emerald-50 border-emerald-100 text-emerald-600"
-          valueColor="text-emerald-600"
         />
 
         <StatCard
@@ -129,7 +128,6 @@ export const InventoryView = () => {
           value={formatCurrency(totalInventoryRetail)}
           icon={DollarSign}
           iconBg="bg-violet-50 border-violet-100 text-violet-600"
-          valueColor="text-violet-600"
         />
 
         <StatCard
@@ -137,7 +135,6 @@ export const InventoryView = () => {
           value={lowStockCount}
           icon={AlertTriangle}
           iconBg="bg-amber-50 border-amber-100 text-amber-600"
-          valueColor="text-amber-600"
         />
       </div>
 
@@ -181,29 +178,30 @@ export const InventoryView = () => {
         </div>
       </div>
 
-      {/* Products Table - Clean, Reorganized 5 Columns */}
-      <div className="bg-white rounded-3xl border border-slate-100/90 shadow-sm overflow-hidden">
+      {/* Products Table - Stockly Dashboard Style (Harmonious, Elegant) */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-100/90 shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-slate-50/70 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                <th className="py-4 px-6 text-left w-4/12">Producto</th>
-                <th className="py-4 px-4 text-center w-2/12">P. Costo</th>
-                <th className="py-4 px-4 text-center w-2/12">P. Venta</th>
-                <th className="py-4 px-4 text-center w-2/12 whitespace-nowrap">Stock Actual</th>
-                <th className="py-4 px-6 text-center w-2/12">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium">
-              {filteredProducts.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="py-14 text-center text-slate-400 text-xs">
-                    <Boxes className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                    No se encontraron productos con los filtros aplicados.
-                  </td>
+          {filteredProducts.length === 0 ? (
+            <div className="py-14 text-center text-slate-400 text-xs">
+              <Boxes className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+              <p className="font-bold text-slate-700 text-sm">No se encontraron productos</p>
+              <p className="text-slate-400 text-xs mt-0.5">
+                No se encontraron productos con los filtros aplicados.
+              </p>
+            </div>
+          ) : (
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-white z-10">
+                <tr className="text-[11px] font-semibold text-slate-400 border-b border-slate-100/90 pb-3">
+                  <th className="pb-3 px-3 text-left font-semibold w-4/12">Producto</th>
+                  <th className="pb-3 px-3 text-center font-semibold w-2/12">P. Costo</th>
+                  <th className="pb-3 px-3 text-center font-semibold w-2/12">P. Venta</th>
+                  <th className="pb-3 px-3 text-center font-semibold w-2/12 whitespace-nowrap">Stock Actual</th>
+                  <th className="pb-3 px-3 text-center font-semibold w-2/12">Acciones</th>
                 </tr>
-              ) : (
-                filteredProducts.map((product) => {
+              </thead>
+              <tbody className="divide-y divide-slate-50 font-medium">
+                {filteredProducts.map((product) => {
                   const stockNum = Number(product.stock) || 0;
                   const minStockNum = Number(product.minStock) || 5;
                   const isLow = stockNum > 0 && stockNum <= minStockNum;
@@ -213,61 +211,58 @@ export const InventoryView = () => {
                   const sell = Number(product.sellPrice) || 0;
 
                   return (
-                    <tr key={product.id} className="hover:bg-slate-50/60 transition-colors">
+                    <tr key={product.id} className="hover:bg-slate-50/90 transition-colors group">
                       {/* Product Name & Thumbnail Only */}
-                      <td className="py-4 px-6 text-left">
-                        <div className="flex items-center gap-3.5">
-                          <div className="w-11 h-11 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-2xs">
+                      <td className="py-3.5 px-3 text-left">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-2xs">
                             {product.image ? (
                               <img src={product.image} alt="" className="w-full h-full object-contain" />
                             ) : (
-                              <Boxes className="w-5 h-5 text-slate-300" />
+                              <Boxes className="w-4 h-4 text-slate-300" />
                             )}
                           </div>
-                          <span className="font-extrabold text-slate-900 text-xs sm:text-sm tracking-tight line-clamp-2">
+                          <span className="font-bold text-slate-800 text-xs line-clamp-2">
                             {product.name}
                           </span>
                         </div>
                       </td>
 
                       {/* Cost Price */}
-                      <td className="py-4 px-4 text-center">
-                        <span className="text-xs font-bold text-slate-500 tabular-nums">
+                      <td className="py-3.5 px-3 text-center">
+                        <span className="text-xs font-semibold text-slate-500 tabular-nums">
                           {formatCurrency(cost)}
                         </span>
                       </td>
 
                       {/* Sell Price */}
-                      <td className="py-4 px-4 text-center">
-                        <span className="text-xs font-black text-slate-900 tabular-nums">
+                      <td className="py-3.5 px-3 text-center">
+                        <span className="font-extrabold text-slate-900 text-xs tabular-nums">
                           {formatCurrency(sell)}
                         </span>
                       </td>
 
                       {/* Stock Status Badge */}
-                      {/* Stock Status Badge - Single Line, No Dot */}
-                      <td className="py-4 px-4 text-center">
-                        <div className="flex justify-center">
-                          <span
-                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold whitespace-nowrap ${
-                              isOut
-                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                                : isLow
-                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            }`}
-                          >
-                            {stockNum} {stockNum === 1 ? 'unidad' : 'unidades'}
-                          </span>
-                        </div>
+                      <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                        <span
+                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                            isOut
+                              ? 'bg-rose-50 text-rose-700 border-rose-200/80'
+                              : isLow
+                              ? 'bg-amber-50 text-amber-700 border-amber-200/80'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                          }`}
+                        >
+                          {stockNum} {stockNum === 1 ? 'unidad' : 'unidades'}
+                        </span>
                       </td>
 
                       {/* Actions: Reabastecer, Editar, Eliminar */}
-                      <td className="py-4 px-6 text-center">
-                        <div className="flex items-center justify-center gap-2">
+                      <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => openRestockModal(product)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-700 text-xs font-extrabold rounded-xl border border-emerald-200/80 transition-all cursor-pointer shadow-2xs"
+                            className="px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-semibold inline-flex items-center gap-1 transition-colors border border-emerald-200/60 cursor-pointer"
                             title="Reabastecer stock de este producto"
                           >
                             <Plus className="w-3.5 h-3.5" />
@@ -275,7 +270,7 @@ export const InventoryView = () => {
                           </button>
                           <button
                             onClick={() => handleEditProduct(product)}
-                            className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-900 rounded-xl transition-colors cursor-pointer"
+                            className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-lg transition-colors cursor-pointer"
                             title="Editar producto"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -286,7 +281,7 @@ export const InventoryView = () => {
                                 deleteProduct(product.id);
                               }
                             }}
-                            className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition-colors cursor-pointer"
+                            className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
                             title="Eliminar producto"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -295,11 +290,23 @@ export const InventoryView = () => {
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
+
+        {/* Footer Summary */}
+        {filteredProducts.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-[11px] text-slate-400 font-medium">
+              Mostrando {filteredProducts.length} {filteredProducts.length === 1 ? 'producto' : 'productos'}
+            </span>
+            <span className="text-[11px] font-bold text-slate-600">
+              Stock total: {filteredProducts.reduce((sum, p) => sum + (Number(p.stock) || 0), 0)} unidades
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

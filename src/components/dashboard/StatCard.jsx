@@ -11,11 +11,7 @@ export const StatCard = ({
   return (
     <div
       onClick={onClick}
-      className={`bg-white p-6 rounded-3xl border border-slate-100/90 shadow-sm transition-all duration-200 flex flex-col justify-center group ${
-        onClick
-          ? 'cursor-pointer hover:shadow-md hover:border-slate-300/80 hover:-translate-y-0.5 active:scale-[0.98]'
-          : ''
-      }`}
+      className="bg-white p-6 rounded-3xl border border-slate-100/90 shadow-sm transition-all duration-200 flex flex-col justify-center group cursor-pointer hover:shadow-md hover:border-slate-300/80 hover:-translate-y-0.5 active:scale-[0.98]"
     >
       <div className="flex items-center justify-between">
         <div>

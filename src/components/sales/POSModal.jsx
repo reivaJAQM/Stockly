@@ -152,7 +152,7 @@ export const POSModal = ({ isOpen, onClose }) => {
       if (existing) {
         return prev.map((item) =>
           item.isService && item.serviceId === service.id
-            ? { ...item, quantity: item.quantity + 1, price: finalPrice > 0 ? finalPrice : item.price }
+            ? { ...item, quantity: 1, price: finalPrice > 0 ? finalPrice : item.price }
             : item
         );
       }
@@ -385,7 +385,7 @@ export const POSModal = ({ isOpen, onClose }) => {
               <button
                 type="button"
                 onClick={() => handleToggleViewMode('grid')}
-                title="Vista en cuadrícula con fotos"
+                title="Vista en cuadrícula"
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   viewMode === 'grid'
                     ? 'bg-blue-600 text-white shadow-xs'
@@ -393,7 +393,7 @@ export const POSModal = ({ isOpen, onClose }) => {
                 }`}
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Fotos</span>
+                <span className="hidden sm:inline">Cuadrícula</span>
               </button>
               <button
                 type="button"
@@ -991,14 +991,7 @@ export const POSModal = ({ isOpen, onClose }) => {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <h6 className="font-bold text-xs text-slate-800 truncate">{item.name}</h6>
-                      {item.isService && (
-                        <span className="px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded font-black text-[9px] uppercase">
-                          Servicio
-                        </span>
-                      )}
-                    </div>
+                    <h6 className="font-bold text-xs text-slate-800 truncate">{item.name}</h6>
 
                     {item.isService ? (
                       <div className="flex items-center gap-1 mt-1">
@@ -1010,10 +1003,9 @@ export const POSModal = ({ isOpen, onClose }) => {
                           value={item.price === 0 ? '' : item.price}
                           placeholder="0.00"
                           onChange={(e) => updateItemPrice(item.id, e.target.value)}
-                          className="w-20 px-1.5 py-0.5 bg-white border border-amber-300 rounded-lg text-xs font-extrabold text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
-                          title="Clic para editar precio del servicio"
+                          className="w-24 px-2 py-0.5 bg-white border border-slate-200 focus:border-blue-500 rounded-lg text-xs font-extrabold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-2xs"
+                          title="Precio del servicio"
                         />
-                        <span className="text-[10px] text-slate-400 font-medium">c/u</span>
                       </div>
                     ) : (
                       <span className="text-[11px] font-extrabold text-blue-600 block">
@@ -1023,28 +1015,31 @@ export const POSModal = ({ isOpen, onClose }) => {
                   </div>
                 </div>
 
-                {/* Quantity Buttons */}
-                <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-xl border border-slate-200/80 shadow-2xs">
-                  <button
-                    onClick={() => updateQuantity(item.id, -1)}
-                    className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                  >
-                    <Minus className="w-3 h-3" />
-                  </button>
-                  <span className="text-xs font-extrabold text-slate-900 w-4 text-center">
-                    {item.quantity}
-                  </span>
-                  <button
-                    onClick={() => updateQuantity(item.id, 1)}
-                    disabled={item.quantity >= item.maxStock}
-                    className={`p-1 rounded-md transition-colors cursor-pointer ${item.quantity >= item.maxStock
-                        ? 'text-slate-300 cursor-not-allowed'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                {/* Quantity Buttons - Only for physical products, not services */}
+                {!item.isService && (
+                  <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <button
+                      onClick={() => updateQuantity(item.id, -1)}
+                      className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <span className="text-xs font-extrabold text-slate-900 w-4 text-center">
+                      {item.quantity}
+                    </span>
+                    <button
+                      onClick={() => updateQuantity(item.id, 1)}
+                      disabled={item.quantity >= item.maxStock}
+                      className={`p-1 rounded-md transition-colors cursor-pointer ${
+                        item.quantity >= item.maxStock
+                          ? 'text-slate-300 cursor-not-allowed'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
-                  >
-                    <Plus className="w-3 h-3" />
-                  </button>
-                </div>
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
 
                 {/* Remove */}
                 <button
