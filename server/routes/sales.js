@@ -13,7 +13,7 @@ router.get('/', async (req, res) => {
         o.customer_id AS "customerId",
         json_build_object(
           'id', o.customer_id,
-          'name', COALESCE(o.customer_name, 'Cliente Mostrador'),
+          'name', COALESCE(o.customer_name, 'Consumidor Final'),
           'email', COALESCE(o.customer_email, 'general@cliente.com'),
           'phone', COALESCE(o.customer_phone, 'N/A')
         ) AS "customer",
@@ -155,7 +155,7 @@ router.post('/', async (req, res) => {
       [
         orderNumber,
         customer?.id ? Number(customer.id) : null,
-        customer?.name || 'Cliente Mostrador',
+        customer?.name || 'Consumidor Final',
         customer?.email || 'general@cliente.com',
         customer?.phone || 'N/A',
         Number(subtotal || total || 0),
@@ -272,7 +272,7 @@ router.post('/', async (req, res) => {
       balanceDue: Number(createdOrder.balanceDue),
       customer: {
         id: customer?.id || null,
-        name: customer?.name || 'Cliente Mostrador',
+        name: customer?.name || 'Consumidor Final',
         email: customer?.email || 'general@cliente.com',
         phone: customer?.phone || 'N/A'
       },
@@ -375,7 +375,7 @@ router.post('/:id/payments', async (req, res) => {
         o.customer_id AS "customerId",
         json_build_object(
           'id', o.customer_id,
-          'name', COALESCE(o.customer_name, 'Cliente Mostrador'),
+          'name', COALESCE(o.customer_name, 'Consumidor Final'),
           'email', COALESCE(o.customer_email, 'general@cliente.com'),
           'phone', COALESCE(o.customer_phone, 'N/A')
         ) AS "customer",

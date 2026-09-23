@@ -70,6 +70,19 @@ export const api = {
     return res.json();
   },
 
+  async batchRestock(restockData) {
+    const res = await fetch(`${API_BASE}/products/batch-restock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(restockData)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al procesar entrada de mercancía');
+    }
+    return res.json();
+  },
+
   // Sales
   async getSales() {
     const res = await fetch(`${API_BASE}/sales`);

@@ -79,9 +79,6 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
                     }`}
                   />
                   <span className={isActive ? 'font-semibold text-white' : ''}>{item.label}</span>
-                  {isActive && (
-                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-xs shadow-cyan-400 animate-pulse" />
-                  )}
                 </button>
               );
             })}

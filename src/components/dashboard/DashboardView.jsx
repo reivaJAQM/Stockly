@@ -74,42 +74,52 @@ export const DashboardView = () => {
     if (isNaN(itemDate.getTime())) return true;
 
     const currentNow = new Date();
-    const todayStart = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate());
+    const todayStart = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate(), 0, 0, 0, 0);
+    const todayEnd = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate(), 23, 59, 59, 999);
 
     if (range === 'today') {
-      return itemDate >= todayStart;
+      return itemDate >= todayStart && itemDate <= todayEnd;
     }
 
     if (range === 'thisWeek') {
       const dayOfWeek = currentNow.getDay();
       const diffToMonday = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
-      const weekStart = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate() + diffToMonday);
-      return itemDate >= weekStart;
+      const weekStart = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate() + diffToMonday, 0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      return itemDate >= weekStart && itemDate <= weekEnd;
     }
 
     if (range === 'thisMonth') {
-      const monthStart = new Date(currentNow.getFullYear(), currentNow.getMonth(), 1);
-      return itemDate >= monthStart;
+      const monthStart = new Date(currentNow.getFullYear(), currentNow.getMonth(), 1, 0, 0, 0, 0);
+      const monthEnd = new Date(currentNow.getFullYear(), currentNow.getMonth() + 1, 0, 23, 59, 59, 999);
+      return itemDate >= monthStart && itemDate <= monthEnd;
     }
 
     if (range === 'thisYear') {
-      const yearStart = new Date(currentNow.getFullYear(), 0, 1);
-      return itemDate >= yearStart;
+      const yearStart = new Date(currentNow.getFullYear(), 0, 1, 0, 0, 0, 0);
+      const yearEnd = new Date(currentNow.getFullYear(), 11, 31, 23, 59, 59, 999);
+      return itemDate >= yearStart && itemDate <= yearEnd;
     }
 
     if (range === 'customMonth') {
-      return itemDate.getFullYear() === selectedYear && itemDate.getMonth() === selectedMonth;
+      const mStart = new Date(selectedYear, selectedMonth, 1, 0, 0, 0, 0);
+      const mEnd = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999);
+      return itemDate >= mStart && itemDate <= mEnd;
     }
 
     if (range === 'customYear') {
-      return itemDate.getFullYear() === selectedYear;
+      const yStart = new Date(selectedYear, 0, 1, 0, 0, 0, 0);
+      const yEnd = new Date(selectedYear, 11, 31, 23, 59, 59, 999);
+      return itemDate >= yStart && itemDate <= yEnd;
     }
 
     return true;
   };
 
   // Filtered metrics based on the selected range
-  const { totalSales, totalExpenses, newCustomersCount, salesCount, periodLabel } = useMemo(() => {
+  const { totalSales, totalExpenses, totalCustomersCount, newCustomersCount, salesCount, periodLabel } = useMemo(() => {
     const orders = data.orders || [];
     const expenses = data.expenses || [];
     const customers = data.customers || [];
@@ -150,11 +160,22 @@ export const DashboardView = () => {
     return {
       totalSales: fallbackSales,
       totalExpenses: fallbackExpenses,
-      newCustomersCount: validCustomers.length > 0 ? validCustomers.length : (customers.length || 0),
+      totalCustomersCount: customers.length,
+      newCustomersCount: validCustomers.length,
       salesCount: validOrders.length,
       periodLabel: labels[activeRange] || 'el período'
     };
   }, [data.orders, data.expenses, data.customers, data.kpis, dateRange, selectedMonth, selectedYear]);
+
+  // All sales belonging to the active time range (without slicing)
+  const periodOrders = useMemo(() => {
+    const orders = data.orders || [];
+    const activeRange = dateRange || 'today';
+    return orders.filter((o) => {
+      const orderDate = o.createdAt || o.date;
+      return isDateInSelectedRange(orderDate, activeRange);
+    });
+  }, [data.orders, dateRange, selectedMonth, selectedYear]);
 
   const totalStockUnits = (data.products || []).reduce((sum, p) => sum + (Number(p.stock) || 0), 0);
 
@@ -205,9 +226,6 @@ export const DashboardView = () => {
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/70 active:scale-98'
                   }`}
                 >
-                  {isSelected && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-pulse flex-shrink-0" />
-                  )}
                   <span>{opt.label}</span>
                 </button>
               );
@@ -226,9 +244,6 @@ export const DashboardView = () => {
               }`}
               title="Consultar un mes o año en específico"
             >
-              {isCustomActive && (
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-pulse flex-shrink-0" />
-              )}
               <Calendar className="w-3.5 h-3.5" />
               <span>
                 {dateRange === 'customMonth'
@@ -365,8 +380,6 @@ export const DashboardView = () => {
         <StatCard
           title="Ventas"
           value={formatCurrency(totalSales)}
-          growth={data.kpis?.totalSalesGrowth || 0}
-          growthLabel={`ingresos de ${periodLabel}`}
           icon={IconSales}
           iconBg="bg-blue-50/80 border-blue-200/70 text-blue-600 shadow-xs"
           onClick={() => setActiveTab('sales')}
@@ -375,8 +388,6 @@ export const DashboardView = () => {
         <StatCard
           title="Gastos"
           value={formatCurrency(totalExpenses)}
-          growth={0}
-          growthLabel={`egresos de ${periodLabel}`}
           icon={IconExpenses}
           iconBg="bg-rose-50/80 border-rose-200/70 text-rose-600 shadow-xs"
           onClick={() => setActiveTab('expenses')}
@@ -384,9 +395,7 @@ export const DashboardView = () => {
 
         <StatCard
           title="Clientes"
-          value={Number(newCustomersCount).toLocaleString('en-US')}
-          growth={data.kpis?.customersGrowth || 0}
-          growthLabel="en directorio"
+          value={Number(totalCustomersCount).toLocaleString('en-US')}
           icon={IconCustomers}
           iconBg="bg-purple-50/80 border-purple-200/70 text-purple-600 shadow-xs"
           onClick={() => setActiveTab('customers')}
@@ -395,8 +404,6 @@ export const DashboardView = () => {
         <StatCard
           title="Inventario"
           value={`${totalStockUnits} u.`}
-          growth={0}
-          growthLabel={`${data.products.length} productos en stock`}
           icon={IconInventory}
           iconBg="bg-amber-50/80 border-amber-200/70 text-amber-600 shadow-xs"
           onClick={() => setActiveTab('inventory')}
@@ -405,7 +412,7 @@ export const DashboardView = () => {
 
       {/* Row 2: Últimas Ventas a ancho completo */}
       <div className="w-full">
-        <RecentSales />
+        <RecentSales orders={periodOrders} periodLabel={periodLabel} activeRange={dateRange || 'today'} />
       </div>
 
       {/* Row 3: Cuentas por Cobrar (50%) y Actividad Reciente (50%) */}

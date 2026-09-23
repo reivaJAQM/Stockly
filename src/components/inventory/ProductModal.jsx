@@ -90,7 +90,7 @@ export const ProductModal = ({ isOpen, onClose, productToEdit }) => {
     }));
   };
 
-  // Robust Image Upload Handler with Automatic Dimension Optimization
+  // WebP 200x200 Ultra-lightweight Thumbnail Image Processor
   const handleFileChange = (file) => {
     if (!file) return;
     const isImage = file.type?.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg|bmp|jfif)$/i.test(file.name);
@@ -104,28 +104,34 @@ export const ProductModal = ({ isOpen, onClose, productToEdit }) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_DIM = 1200;
+        const TARGET_SIZE = 200;
         let width = img.width;
         let height = img.height;
 
         if (width > height) {
-          if (width > MAX_DIM) {
-            height = Math.round((height * MAX_DIM) / width);
-            width = MAX_DIM;
+          if (width > TARGET_SIZE) {
+            height = Math.round((height * TARGET_SIZE) / width);
+            width = TARGET_SIZE;
           }
         } else {
-          if (height > MAX_DIM) {
-            width = Math.round((width * MAX_DIM) / height);
-            height = MAX_DIM;
+          if (height > TARGET_SIZE) {
+            width = Math.round((width * TARGET_SIZE) / height);
+            height = TARGET_SIZE;
           }
         }
 
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, width, height);
-        const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.90);
-        setFormData((prev) => ({ ...prev, image: optimizedBase64 }));
+
+        let optimizedWebP = canvas.toDataURL('image/webp', 0.80);
+        if (!optimizedWebP.startsWith('data:image/webp')) {
+          optimizedWebP = canvas.toDataURL('image/jpeg', 0.80);
+        }
+        setFormData((prev) => ({ ...prev, image: optimizedWebP }));
       };
       img.onerror = () => {
         setFormData((prev) => ({ ...prev, image: e.target.result }));

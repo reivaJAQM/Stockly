@@ -1,6 +1,6 @@
 # Stockly - Sistema de Gestion de Inventario, Ventas y Punto de Venta (POS)
 
-Stockly es una solucion integral para la administracion y control operativo de comercios minoristas y pequenas empresas. Proporciona herramientas avanzadas para la gestion de inventario, registro de ventas en tiempo real, control de gastos, administracion de clientes y emision de comprobantes digitales con integracion a WhatsApp.
+Stockly es una solucion integral para la administracion y control operativo de comercios minoristas y pequenas empresas. Proporciona herramientas avanzadas para la gestion de inventario, registro de ventas en tiempo real, control de gastos, administracion de clientes y emision de comprobantes digitales.
 
 ---
 
@@ -23,7 +23,6 @@ Stockly es una solucion integral para la administracion y control operativo de c
 - Registro agil de transacciones en caja con soporte para multiples metodos de pago (Efectivo, Tarjeta, Transferencia).
 - Calculo automatico de subtotales, descuentos, impuestos y cambio en efectivo.
 - Generacion instantanea de comprobantes digitales.
-- Despacho directo de tickets por WhatsApp con formato optimizado universal.
 
 ### Control de Inventario y Catalogo
 - Administracion detallada de productos (SKU, codigos de barra, categorias, costos y precios de venta).
@@ -140,7 +139,7 @@ Stockly/
 │   │   └── suppliers/        # Gestion de proveedores
 │   ├── context/              # Context API para el estado global de la aplicacion
 │   ├── services/             # Cliente API para consumo de endpoints backend
-│   ├── utils/                # Utilidades de formato, fechas y WhatsApp
+│   ├── utils/                # Utilidades de formato y fechas
 │   ├── App.jsx               # Enrutamiento y vistas principales
 │   └── main.jsx              # Punto de entrada de React
 ├── .env.example              # Plantilla de variables de entorno

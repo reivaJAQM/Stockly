@@ -154,9 +154,6 @@ export const ChartsView = () => {
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/70 active:scale-98'
                 }`}
               >
-                {isSelected && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-pulse flex-shrink-0" />
-                )}
                 <span>{opt.label}</span>
               </button>
             );

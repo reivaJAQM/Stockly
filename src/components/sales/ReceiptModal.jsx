@@ -66,7 +66,7 @@ export const ReceiptModal = ({ order, onClose }) => {
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500 font-sans">Cliente:</span>
-              <span className="font-bold text-slate-900 font-sans">{order.customer?.name || "Cliente Mostrador"}</span>
+              <span className="font-bold text-slate-900 font-sans">{order.customer?.name || "Consumidor Final"}</span>
             </div>
             {hasPhone && (
               <div className="flex justify-between">

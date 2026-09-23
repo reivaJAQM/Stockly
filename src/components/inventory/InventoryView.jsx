@@ -4,23 +4,13 @@ import { CustomSelect } from '../common/CustomSelect';
 import {
   Plus,
   Search,
-  Filter,
-  ArrowUpDown,
   Edit2,
   Trash2,
   Boxes,
   AlertTriangle,
-  CheckCircle2,
-  PackageX,
-  PlusCircle,
-  Minus,
-  Tag,
   DollarSign,
   TrendingUp,
-  Zap,
-  Package,
-  Layers,
-  Sparkles
+  Truck
 } from 'lucide-react';
 
 export const InventoryView = () => {
@@ -30,23 +20,32 @@ export const InventoryView = () => {
     setIsProductModalOpen,
     setEditingProduct,
     deleteProduct,
-    setSelectedStockProduct,
-    setIsAdjustStockModalOpen,
-    adjustStock
+    openRestockModal
   } = useApp();
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [stockFilter, setStockFilter] = useState('all'); // all, low, out, healthy
 
-  // Calculations for product valuation cards
+  // Calculations for valuation cards
   const totalProducts = (data.products || []).length;
   const totalStockUnits = (data.products || []).reduce((sum, p) => sum + (Number(p.stock) || 0), 0);
-  const totalInventoryCost = (data.products || []).reduce((sum, p) => sum + (Number(p.stock) || 0) * (Number(p.costPrice) || 0), 0);
-  const totalInventoryRetail = (data.products || []).reduce((sum, p) => sum + (Number(p.stock) || 0) * (Number(p.sellPrice) || 0), 0);
-  const lowStockCount = (data.products || []).filter((p) => (Number(p.stock) || 0) <= (Number(p.minStock) || 5)).length;
+  const totalInventoryCost = (data.products || []).reduce(
+    (sum, p) => sum + (Number(p.stock) || 0) * (Number(p.costPrice) || 0),
+    0
+  );
+  const totalInventoryRetail = (data.products || []).reduce(
+    (sum, p) => sum + (Number(p.stock) || 0) * (Number(p.sellPrice) || 0),
+    0
+  );
+  const lowStockCount = (data.products || []).filter(
+    (p) => (Number(p.stock) || 0) <= (Number(p.minStock) || 5)
+  ).length;
 
-  const productCategories = ['all', ...Array.from(new Set((data.products || []).map((p) => p.category).filter(Boolean)))];
+  const productCategories = [
+    'all',
+    ...Array.from(new Set((data.products || []).map((p) => p.category).filter(Boolean)))
+  ];
 
   const filteredProducts = (data.products || []).filter((p) => {
     const matchesSearch =
@@ -71,30 +70,6 @@ export const InventoryView = () => {
     setIsProductModalOpen(true);
   };
 
-  const handleAdjust = (product) => {
-    setSelectedStockProduct(product);
-    setIsAdjustStockModalOpen(true);
-  };
-
-  const handleQuickAdd = async (e, product, amount) => {
-    e.stopPropagation();
-    try {
-      await adjustStock(product.id, amount, `Ajuste rápido (+${amount})`);
-    } catch (err) {
-      console.error('Error in quick add:', err);
-    }
-  };
-
-  const handleQuickSubtract = async (e, product, amount) => {
-    e.stopPropagation();
-    if ((Number(product.stock) || 0) <= 0) return;
-    try {
-      await adjustStock(product.id, -amount, `Ajuste rápido (-${amount})`);
-    } catch (err) {
-      console.error('Error in quick subtract:', err);
-    }
-  };
-
   return (
     <div className="space-y-6 pb-12">
       {/* Top Header with Actions */}
@@ -104,20 +79,31 @@ export const InventoryView = () => {
             Inventario
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-            Administra tus productos físicos de almacén, existencias y costos.
+            Administra tus existencias de almacén, costos, precios y entradas de mercancía.
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setEditingProduct(null);
-            setIsProductModalOpen(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold rounded-2xl shadow-md shadow-blue-500/20 transition-all cursor-pointer self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nuevo Producto</span>
-        </button>
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <button
+            onClick={() => openRestockModal(null)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-extrabold rounded-2xl shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+            title="Ingreso de compra o reposición de stock masivo"
+          >
+            <Truck className="w-4 h-4" />
+            <span>Entrada de Mercancía</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setEditingProduct(null);
+              setIsProductModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-extrabold rounded-2xl shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nuevo Producto</span>
+          </button>
+        </div>
       </div>
 
       {/* Valuation Metrics Banner */}
@@ -167,13 +153,13 @@ export const InventoryView = () => {
         </div>
       </div>
 
-      {/* Search, Filter & View Mode Bar */}
+      {/* Search, Filter & Count Bar */}
       <div className="bg-white p-4 rounded-3xl border border-slate-100/90 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Buscar por nombre, SKU o código..."
+            placeholder="Buscar producto por nombre..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
@@ -207,28 +193,24 @@ export const InventoryView = () => {
         </div>
       </div>
 
-      {/* Products Table */}
+      {/* Products Table - Clean, Reorganized 5 Columns */}
       <div className="bg-white rounded-3xl border border-slate-100/90 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-xs">
             <thead>
-              <tr className="bg-slate-50/70 border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                <th className="py-3.5 px-6">Producto</th>
-                <th className="py-3.5 px-4">SKU / Código</th>
-                <th className="py-3.5 px-4">Categoría</th>
-                <th className="py-3.5 px-4">P. Costo</th>
-                <th className="py-3.5 px-4">P. Venta</th>
-                <th className="py-3.5 px-4">Margen</th>
-                <th className="py-3.5 px-4 text-center">Stock Actual</th>
-                <th className="py-3.5 px-4 text-center">Ajuste Rápido</th>
-                <th className="py-3.5 px-6 text-right">Acciones</th>
+              <tr className="bg-slate-50/70 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                <th className="py-4 px-6 text-left w-4/12">Producto</th>
+                <th className="py-4 px-4 text-center w-2/12">P. Costo</th>
+                <th className="py-4 px-4 text-center w-2/12">P. Venta</th>
+                <th className="py-4 px-4 text-center w-2/12 whitespace-nowrap">Stock Actual</th>
+                <th className="py-4 px-6 text-center w-2/12">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="py-12 text-center text-slate-400 text-xs">
-                    <Boxes className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                  <td colSpan="5" className="py-14 text-center text-slate-400 text-xs">
+                    <Boxes className="w-10 h-10 mx-auto text-slate-300 mb-2" />
                     No se encontraron productos con los filtros aplicados.
                   </td>
                 </tr>
@@ -241,98 +223,71 @@ export const InventoryView = () => {
 
                   const cost = Number(product.costPrice) || 0;
                   const sell = Number(product.sellPrice) || 0;
-                  const margin = sell > 0 ? (((sell - cost) / sell) * 100).toFixed(0) : 0;
 
                   return (
                     <tr key={product.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3.5 px-6">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {/* Product Name & Thumbnail Only */}
+                      <td className="py-4 px-6 text-left">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-11 h-11 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-2xs">
                             {product.image ? (
                               <img src={product.image} alt="" className="w-full h-full object-contain" />
                             ) : (
                               <Boxes className="w-5 h-5 text-slate-300" />
                             )}
                           </div>
-                          <div>
-                            <p className="font-bold text-slate-900 text-xs">{product.name}</p>
-                            <span className="text-[10px] text-slate-400 font-medium">Stock mín: {minStockNum}</span>
-                          </div>
+                          <span className="font-extrabold text-slate-900 text-xs sm:text-sm tracking-tight line-clamp-2">
+                            {product.name}
+                          </span>
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px]">
-                        {product.sku || 'S/N'}
-                      </td>
-
-                      <td className="py-3.5 px-4">
-                        <span className="px-2.5 py-1 bg-slate-100 text-slate-700 text-[11px] font-semibold rounded-lg">
-                          {product.category || 'General'}
+                      {/* Cost Price */}
+                      <td className="py-4 px-4 text-center">
+                        <span className="text-xs font-bold text-slate-500 tabular-nums">
+                          {formatCurrency(cost)}
                         </span>
                       </td>
 
-                      <td className="py-3.5 px-4 text-slate-600 font-semibold">
-                        {formatCurrency(cost)}
-                      </td>
-
-                      <td className="py-3.5 px-4 font-extrabold text-slate-900">
-                        {formatCurrency(sell)}
-                      </td>
-
-                      <td className="py-3.5 px-4">
-                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-md">
-                          +{margin}%
+                      {/* Sell Price */}
+                      <td className="py-4 px-4 text-center">
+                        <span className="text-xs font-black text-slate-900 tabular-nums">
+                          {formatCurrency(sell)}
                         </span>
                       </td>
 
-                      <td className="py-3.5 px-4 text-center">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                            isOut
-                              ? 'bg-rose-50 text-rose-600 border border-rose-100'
-                              : isLow
-                              ? 'bg-amber-50 text-amber-600 border border-amber-100'
-                              : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                          }`}
-                        >
-                          {stockNum} unidades
-                        </span>
-                      </td>
-
-                      <td className="py-3.5 px-4 text-center">
-                        <div className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200/80 rounded-xl p-0.5">
-                          <button
-                            type="button"
-                            onClick={(e) => handleQuickSubtract(e, product, 1)}
-                            disabled={stockNum <= 0}
-                            className="p-1 hover:bg-white text-slate-500 hover:text-rose-600 rounded-lg transition-colors disabled:opacity-30 cursor-pointer"
-                            title="Restar 1 unidad"
+                      {/* Stock Status Badge */}
+                      {/* Stock Status Badge - Single Line, No Dot */}
+                      <td className="py-4 px-4 text-center">
+                        <div className="flex justify-center">
+                          <span
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold whitespace-nowrap ${
+                              isOut
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : isLow
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            }`}
                           >
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
+                            {stockNum} {stockNum === 1 ? 'unidad' : 'unidades'}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Actions: Reabastecer, Editar, Eliminar */}
+                      <td className="py-4 px-6 text-center">
+                        <div className="flex items-center justify-center gap-2">
                           <button
-                            type="button"
-                            onClick={(e) => handleQuickAdd(e, product, 1)}
-                            className="p-1 hover:bg-white text-slate-500 hover:text-emerald-600 rounded-lg transition-colors cursor-pointer"
-                            title="Sumar 1 unidad"
+                            onClick={() => openRestockModal(product)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-700 text-xs font-extrabold rounded-xl border border-emerald-200/80 transition-all cursor-pointer shadow-2xs"
+                            title="Reabastecer stock de este producto"
                           >
                             <Plus className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-
-                      <td className="py-3.5 px-6 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => handleAdjust(product)}
-                            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold rounded-xl transition-colors cursor-pointer"
-                            title="Ajustar inventario detallado"
-                          >
-                            Ajustar
+                            <span>Reabastecer</span>
                           </button>
                           <button
                             onClick={() => handleEditProduct(product)}
-                            className="p-2 hover:bg-slate-100 text-slate-500 hover:text-slate-900 rounded-xl transition-colors cursor-pointer"
+                            className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-900 rounded-xl transition-colors cursor-pointer"
                             title="Editar producto"
                           >
                             <Edit2 className="w-4 h-4" />

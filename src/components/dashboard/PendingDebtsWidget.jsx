@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { AddPaymentModal } from '../sales/AddPaymentModal';
+import { CustomerDebtsModal } from './CustomerDebtsModal';
 import {
   HandCoins,
-  ArrowRight,
   User,
-  Phone,
   CheckCircle2,
   AlertCircle,
   Receipt,
-  Calendar
+  Calendar,
+  ChevronRight
 } from 'lucide-react';
 
 export const PendingDebtsWidget = () => {
-  const { data, formatCurrency, setActiveTab } = useApp();
-  const [selectedOrderForPayment, setSelectedOrderForPayment] = useState(null);
+  const { data, formatCurrency } = useApp();
+  const [selectedCustomerForDebts, setSelectedCustomerForDebts] = useState(null);
 
   const orders = data.orders || [];
 
@@ -48,7 +47,7 @@ export const PendingDebtsWidget = () => {
         customer: order.customer || { name: 'Cliente' },
         totalDebt: custTotalDebt,
         ordersCount: custOrders.length,
-        latestOrder: custOrders[0] // to open payment modal directly
+        orders: custOrders
       });
     }
   });
@@ -60,35 +59,20 @@ export const PendingDebtsWidget = () => {
     <div className="bg-white p-6 rounded-3xl border border-slate-100/90 shadow-sm flex flex-col justify-between h-full">
       <div>
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-600 flex items-center justify-center shadow-2xs flex-shrink-0">
-              <HandCoins className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h4 className="text-base font-extrabold text-slate-900 tracking-tight">
-                  Cuentas por Cobrar
-                </h4>
-                {customerDebts.length > 0 && (
-                  <span className="text-[11px] font-extrabold text-rose-700 bg-rose-50 border border-rose-200/80 px-2.5 py-0.5 rounded-full whitespace-nowrap">
-                    {customerDebts.length} {customerDebts.length === 1 ? 'cliente con deuda' : 'clientes con deuda'}
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-400 font-medium mt-0.5">
-                Saldos pendientes de cobro a clientes
-              </p>
-            </div>
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-600 flex items-center justify-center shadow-2xs flex-shrink-0">
+            <HandCoins className="w-5 h-5" />
           </div>
-
-          <button
-            onClick={() => setActiveTab('customers')}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl font-bold text-xs border border-slate-200/70 transition-colors self-start sm:self-auto"
-          >
-            <span>Ver Clientes</span>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-          </button>
+          <div>
+            <h4 className="text-base font-extrabold text-slate-900 tracking-tight">
+              Cuentas por Cobrar
+            </h4>
+            <p className="text-xs text-slate-400 font-medium mt-0.5">
+              {customerDebts.length > 0
+                ? `${customerDebts.length} ${customerDebts.length === 1 ? 'cliente con deuda pendiente' : 'clientes con deuda pendiente'}`
+                : 'Sin deudas pendientes'}
+            </p>
+          </div>
         </div>
 
         {/* Content list or Empty State */}
@@ -109,33 +93,30 @@ export const PendingDebtsWidget = () => {
             {customerDebts.map((item) => (
               <div
                 key={item.key}
-                className="p-4 rounded-2xl bg-slate-50/70 hover:bg-slate-50/90 border border-slate-100 hover:border-slate-200/80 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 group"
+                onClick={() => setSelectedCustomerForDebts(item)}
+                className="p-4 rounded-2xl bg-slate-50/70 hover:bg-blue-50/40 border border-slate-100 hover:border-blue-200/80 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 group cursor-pointer"
+                title="Haz clic para ver las deudas detalladas de este cliente"
               >
                 {/* Left: Avatar & Info */}
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-11 h-11 rounded-2xl bg-amber-100/80 border border-amber-200/70 text-amber-900 font-black text-sm flex items-center justify-center flex-shrink-0 shadow-2xs">
+                  <div className="w-11 h-11 rounded-2xl bg-amber-100/80 border border-amber-200/70 text-amber-900 font-black text-sm flex items-center justify-center flex-shrink-0 shadow-2xs group-hover:scale-102 transition-transform">
                     {(item.customer?.name || 'C').charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <h5 className="font-extrabold text-slate-900 text-sm truncate leading-snug" title={item.customer?.name}>
+                    <h5 className="font-extrabold text-slate-900 text-sm truncate leading-snug group-hover:text-blue-600 transition-colors" title={item.customer?.name}>
                       {item.customer?.name || 'Cliente'}
                     </h5>
-                    <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mt-1 flex-wrap">
-                      {item.customer?.phone && item.customer?.phone !== 'N/A' && (
-                        <span className="flex items-center gap-1 text-slate-500 font-semibold">
-                          <Phone className="w-3 h-3 text-slate-400" />
-                          <span>{item.customer.phone}</span>
-                        </span>
-                      )}
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200/70 text-slate-500">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium mt-0.5">
+                      <Receipt className="w-3.5 h-3.5 text-slate-400" />
+                      <span>
                         {item.ordersCount} {item.ordersCount === 1 ? 'cuenta pendiente' : 'cuentas pendientes'}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Right: Debt amount & Action Button */}
-                <div className="flex items-center justify-between sm:justify-end gap-5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 flex-shrink-0">
+                {/* Right: Debt amount & Clickable indicator */}
+                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 flex-shrink-0">
                   <div className="text-left sm:text-right">
                     <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">
                       Saldo Deudor
@@ -145,14 +126,9 @@ export const PendingDebtsWidget = () => {
                     </span>
                   </div>
 
-                  <button
-                    onClick={() => setSelectedOrderForPayment(item.latestOrder)}
-                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
-                    title="Registrar abono para este cliente"
-                  >
-                    <HandCoins className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Abonar</span>
-                  </button>
+                  <div className="w-8 h-8 rounded-xl bg-white border border-slate-200/80 text-slate-400 group-hover:bg-blue-600 group-hover:border-blue-600 group-hover:text-white flex items-center justify-center transition-all shadow-2xs">
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
                 </div>
               </div>
             ))}
@@ -172,12 +148,12 @@ export const PendingDebtsWidget = () => {
         </div>
       )}
 
-      {/* Modal para Abonar directamente desde el Dashboard */}
-      {selectedOrderForPayment && (
-        <AddPaymentModal
-          order={selectedOrderForPayment}
-          isOpen={Boolean(selectedOrderForPayment)}
-          onClose={() => setSelectedOrderForPayment(null)}
+      {/* Modal para ver deudas detalladas y abonar con total flexibilidad */}
+      {selectedCustomerForDebts && (
+        <CustomerDebtsModal
+          customerDebtData={selectedCustomerForDebts}
+          isOpen={Boolean(selectedCustomerForDebts)}
+          onClose={() => setSelectedCustomerForDebts(null)}
         />
       )}
     </div>

@@ -65,8 +65,18 @@ export const AppProvider = ({ children }) => {
   const [editingService, setEditingService] = useState(null);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(null);
   const [isAdjustStockModalOpen, setIsAdjustStockModalOpen] = useState(false);
   const [selectedStockProduct, setSelectedStockProduct] = useState(null);
+  const [isRestockModalOpen, setIsRestockModalOpen] = useState(false);
+  const [restockInitialProduct, setRestockInitialProduct] = useState(null);
+
+  const openRestockModal = useCallback((product = null) => {
+    setRestockInitialProduct(product);
+    setIsRestockModalOpen(true);
+  }, []);
+
   const [dateRange, setDateRange] = useState('today');
   const [inventorySubTab, setInventorySubTab] = useState('all'); // 'all' | 'sold'
   const [toast, setToast] = useState(null);
@@ -221,6 +231,28 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  const batchRestock = async (restockData) => {
+    try {
+      const res = await api.batchRestock(restockData);
+      await refreshData();
+      showToast({
+        type: 'success',
+        title: 'Entrada de Mercancía Exitosa',
+        message: `Se actualizaron las existencias de ${res.updatedCount || restockData.items?.length || 1} producto(s).`
+      });
+      return res;
+    } catch (error) {
+      console.error("Error batch restocking:", error);
+      showToast({
+        type: 'error',
+        title: 'Error al Registrar Entrada',
+        message: error.message || 'No se pudo registrar la entrada de mercancía.'
+      });
+      throw error;
+    }
+  };
+
+
   // 2. SALES ACTIONS
   const createSale = async (saleData) => {
     try {
@@ -259,6 +291,76 @@ export const AppProvider = ({ children }) => {
         type: 'error',
         title: 'Error al Registrar Abono',
         message: error.message || 'No se pudo registrar el abono en la base de datos.'
+      });
+      throw error;
+    }
+  };
+
+  const settleMultipleCustomerOrders = async (orders, paymentMethod = 'Efectivo', notes = '') => {
+    try {
+      for (const order of orders) {
+        const balance = Number(order.balanceDue !== undefined ? order.balanceDue : (order.balance_due || 0));
+        if (balance > 0) {
+          await api.addPaymentToOrder(order.id, {
+            amount: balance,
+            paymentMethod,
+            notes: notes || 'Liquidación total de deuda'
+          });
+        }
+      }
+      await refreshData();
+      showToast({
+        type: 'success',
+        title: 'Cuentas Liquidadas',
+        message: 'Se liquidaron todas las deudas del cliente exitosamente.'
+      });
+    } catch (error) {
+      console.error("Error settling customer orders:", error);
+      showToast({
+        type: 'error',
+        title: 'Error al Liquidar Cuentas',
+        message: error.message || 'No se pudieron liquidar todas las deudas.'
+      });
+      throw error;
+    }
+  };
+
+  const applyGlobalPayment = async (orders, totalAmount, paymentMethod = 'Efectivo', notes = '') => {
+    try {
+      let remaining = Number(totalAmount);
+      if (!remaining || remaining <= 0) return;
+
+      // Ordenar por las más antiguas primero (FIFO)
+      const sortedOrders = [...orders].sort(
+        (a, b) => new Date(a.createdAt || a.created_at) - new Date(b.createdAt || b.created_at)
+      );
+
+      for (const order of sortedOrders) {
+        if (remaining <= 0) break;
+        const balance = Number(order.balanceDue !== undefined ? order.balanceDue : (order.balance_due || 0));
+        if (balance > 0) {
+          const payForThis = Math.min(remaining, balance);
+          await api.addPaymentToOrder(order.id, {
+            amount: payForThis,
+            paymentMethod,
+            notes: notes || `Abono global (${paymentMethod})`
+          });
+          remaining -= payForThis;
+        }
+      }
+
+      await refreshData();
+      showToast({
+        type: 'success',
+        title: 'Abono Global Registrado',
+        message: `Se aplicó el abono de $${Number(totalAmount).toFixed(2)} a las cuentas del cliente.`
+      });
+    } catch (error) {
+      console.error("Error applying global payment:", error);
+      showToast({
+        type: 'error',
+        title: 'Error en Abono Global',
+        message: error.message || 'No se pudo registrar el abono global.'
       });
       throw error;
     }
@@ -502,10 +604,20 @@ export const AppProvider = ({ children }) => {
         setIsExpenseModalOpen,
         editingExpense,
         setEditingExpense,
+        isCustomerModalOpen,
+        setIsCustomerModalOpen,
+        editingCustomer,
+        setEditingCustomer,
         isAdjustStockModalOpen,
         setIsAdjustStockModalOpen,
         selectedStockProduct,
         setSelectedStockProduct,
+        isRestockModalOpen,
+        setIsRestockModalOpen,
+        restockInitialProduct,
+        setRestockInitialProduct,
+        openRestockModal,
+        batchRestock,
         dateRange,
         setDateRange,
         inventorySubTab,
@@ -521,6 +633,8 @@ export const AppProvider = ({ children }) => {
         adjustStock,
         createSale,
         addOrderPayment,
+        settleMultipleCustomerOrders,
+        applyGlobalPayment,
         updateOrderStatus,
         deleteSale,
         addExpense,

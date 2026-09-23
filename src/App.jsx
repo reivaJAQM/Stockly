@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from './context/AppContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
@@ -17,6 +17,7 @@ import { ReceiptModal } from './components/sales/ReceiptModal';
 import { ProductModal } from './components/inventory/ProductModal';
 import { ServiceModal } from './components/inventory/ServiceModal';
 import { StockAdjustModal } from './components/inventory/StockAdjustModal';
+import { StockEntryModal } from './components/inventory/StockEntryModal';
 import { ExpenseModal } from './components/expenses/ExpenseModal';
 import { CommandPalette } from './components/common/CommandPalette';
 import { ToastNotification } from './components/common/ToastNotification';
@@ -31,20 +32,106 @@ export function App() {
     isProductModalOpen,
     setIsProductModalOpen,
     editingProduct,
+    setEditingProduct,
     isServiceModalOpen,
     setIsServiceModalOpen,
     editingService,
     setEditingService,
     isExpenseModalOpen,
     setIsExpenseModalOpen,
+    isCustomerModalOpen,
+    setIsCustomerModalOpen,
+    editingCustomer,
+    setEditingCustomer,
     isAdjustStockModalOpen,
     setIsAdjustStockModalOpen,
     selectedStockProduct,
+    isRestockModalOpen,
+    setIsRestockModalOpen,
+    restockInitialProduct,
+    isCommandPaletteOpen,
     toast,
     hideToast
   } = useApp();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Global keyboard shortcut: Pressing Space opens the primary action for the active tab
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code !== 'Space' && e.key !== ' ') return;
+
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          activeEl.tagName === 'SELECT' ||
+          activeEl.isContentEditable);
+
+      if (isInput) return;
+
+      const isAnyModalOpen =
+        isPOSOpen ||
+        isProductModalOpen ||
+        isServiceModalOpen ||
+        isExpenseModalOpen ||
+        isCustomerModalOpen ||
+        isAdjustStockModalOpen ||
+        Boolean(selectedReceiptOrder) ||
+        isCommandPaletteOpen;
+
+      if (isAnyModalOpen) return;
+
+      e.preventDefault();
+
+      switch (activeTab) {
+        case 'dashboard':
+        case 'sales':
+          setIsPOSOpen(true);
+          break;
+        case 'inventory':
+        case 'products':
+          setEditingProduct?.(null);
+          setIsProductModalOpen(true);
+          break;
+        case 'services':
+          setEditingService?.(null);
+          setIsServiceModalOpen(true);
+          break;
+        case 'expenses':
+          setIsExpenseModalOpen(true);
+          break;
+        case 'customers':
+          setEditingCustomer?.(null);
+          setIsCustomerModalOpen(true);
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    activeTab,
+    isPOSOpen,
+    isProductModalOpen,
+    isServiceModalOpen,
+    isExpenseModalOpen,
+    isCustomerModalOpen,
+    isAdjustStockModalOpen,
+    selectedReceiptOrder,
+    isCommandPaletteOpen,
+    setIsPOSOpen,
+    setEditingProduct,
+    setIsProductModalOpen,
+    setEditingService,
+    setIsServiceModalOpen,
+    setIsExpenseModalOpen,
+    setEditingCustomer,
+    setIsCustomerModalOpen
+  ]);
 
   const renderActiveView = () => {
     switch (activeTab) {
@@ -108,6 +195,11 @@ export function App() {
         isOpen={isAdjustStockModalOpen}
         onClose={() => setIsAdjustStockModalOpen(false)}
         product={selectedStockProduct}
+      />
+      <StockEntryModal
+        isOpen={isRestockModalOpen}
+        onClose={() => setIsRestockModalOpen(false)}
+        initialProduct={restockInitialProduct}
       />
       <ExpenseModal
         isOpen={isExpenseModalOpen}

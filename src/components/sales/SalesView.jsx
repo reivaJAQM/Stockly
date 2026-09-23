@@ -305,7 +305,7 @@ export const SalesView = () => {
                       {order.id}
                     </td>
                     <td className="py-3.5 px-4">
-                      <p className="font-bold text-slate-800">{order.customer?.name || "Cliente Mostrador"}</p>
+                      <p className="font-bold text-slate-800">{order.customer?.name || "Consumidor Final"}</p>
                       <span className="text-[10px] text-slate-400">
                         {order.customer?.phone && order.customer?.phone !== 'N/A' ? order.customer?.phone : order.customer?.email}
                       </span>

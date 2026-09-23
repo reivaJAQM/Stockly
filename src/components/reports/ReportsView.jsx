@@ -56,7 +56,7 @@ export const ReportsView = () => {
       const rows = (data.orders || [])
         .map(
           (o) =>
-            `"${o.id}","${o.customer?.name || 'Cliente Mostrador'}","${o.date}","${o.channel || 'Físico'}","${o.paymentMethod || 'Efectivo'}",${Number(o.total || 0).toFixed(2)},"${o.status}"`
+            `"${o.id}","${o.customer?.name || 'Consumidor Final'}","${o.date}","${o.channel || 'Físico'}","${o.paymentMethod || 'Efectivo'}",${Number(o.total || 0).toFixed(2)},"${o.status}"`
         )
         .join("\n");
       const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });

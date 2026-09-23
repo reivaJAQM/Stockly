@@ -13,7 +13,7 @@ import {
   XCircle
 } from 'lucide-react';
 
-export const RecentSales = () => {
+export const RecentSales = ({ orders, periodLabel = 'hoy', activeRange = 'today' }) => {
   const {
     data,
     formatCurrency,
@@ -22,7 +22,7 @@ export const RecentSales = () => {
     setIsPOSOpen
   } = useApp();
 
-  const recentOrders = (data.orders || []).slice(0, 6);
+  const recentOrders = orders !== undefined ? orders : (data.orders || []);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -54,40 +54,43 @@ export const RecentSales = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div>
-            <div className="flex items-center gap-2">
-              <h4 className="text-base font-extrabold text-slate-900 tracking-tight">
-                Últimas Ventas
-              </h4>
-              <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
-                {(data.orders || []).length} { (data.orders || []).length === 1 ? 'venta' : 'ventas' }
-              </span>
-            </div>
+            <h4 className="text-base font-extrabold text-slate-900 tracking-tight">
+              Registro de Ventas
+            </h4>
             <p className="text-xs text-slate-400 font-medium mt-0.5">
-              Transacciones y pedidos más recientes de tu negocio
+              {recentOrders.length > 0
+                ? `${recentOrders.length} ${recentOrders.length === 1 ? 'venta realizada' : 'ventas realizadas'} ${activeRange === 'today' ? 'el día de hoy' : `en ${periodLabel}`}`
+                : activeRange === 'today'
+                  ? 'Sin ventas registradas hoy'
+                  : `Sin ventas en ${periodLabel}`}
             </p>
           </div>
 
           <button
             onClick={() => setActiveTab('sales')}
-            className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl font-semibold text-xs border border-slate-200/80 transition-colors self-start sm:self-auto"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl font-bold text-xs border border-slate-200/80 transition-colors self-start sm:self-auto cursor-pointer"
           >
             <span>Ver todas</span>
-            <ArrowRight className="w-3 h-3 text-slate-400" />
+            <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
           </button>
         </div>
 
         {/* Content Table / Empty State */}
-        <div className="overflow-x-auto flex-1 flex flex-col justify-center">
+        <div className="overflow-x-auto max-h-[480px] overflow-y-auto flex-1 flex flex-col justify-start">
           {recentOrders.length === 0 ? (
             <div className="py-10 text-center flex flex-col items-center justify-center my-auto">
               <div className="w-14 h-14 rounded-2xl bg-blue-50/80 border border-blue-100 flex items-center justify-center mb-3 text-blue-600 shadow-2xs">
                 <ShoppingBag className="w-7 h-7 stroke-[1.75]" />
               </div>
               <p className="font-extrabold text-sm text-slate-800 mb-1">
-                No hay ventas registradas aún
+                {activeRange === 'today'
+                  ? 'No hay ventas registradas el día de hoy'
+                  : `No hay ventas registradas en ${periodLabel}`}
               </p>
               <p className="text-xs text-slate-400 max-w-sm leading-relaxed mb-4">
-                Cuando cobres o generes ventas desde el Punto de Venta, tus pedidos aparecerán aquí con su detalle, método de pago y comprobante.
+                {activeRange === 'today'
+                  ? 'Cuando cobres o generes ventas desde el Punto de Venta hoy, tus pedidos aparecerán aquí con su detalle.'
+                  : 'No se encontraron pedidos registrados dentro del período seleccionado.'}
               </p>
               <button
                 onClick={() => setIsPOSOpen(true)}
@@ -98,7 +101,7 @@ export const RecentSales = () => {
             </div>
           ) : (
             <table className="w-full text-xs">
-              <thead>
+              <thead className="sticky top-0 bg-white z-10">
                 <tr className="text-[11px] font-semibold text-slate-400 border-b border-slate-100/90 pb-3">
                   <th className="pb-3 px-2 text-left font-semibold w-[15%]">Orden</th>
                   <th className="pb-3 px-2 text-left font-semibold w-[26%]">Cliente</th>
@@ -111,11 +114,6 @@ export const RecentSales = () => {
               </thead>
               <tbody className="divide-y divide-slate-50 font-medium">
                 {recentOrders.map((order) => {
-                  const itemsCount = (order.items || []).reduce(
-                    (sum, item) => sum + (Number(item.quantity) || 1),
-                    0
-                  );
-
                   return (
                     <tr
                       key={order.id}
@@ -127,7 +125,7 @@ export const RecentSales = () => {
                         {order.id}
                       </td>
 
-                      {/* Cliente y Resumen */}
+                      {/* Cliente */}
                       <td className="py-3.5 px-2 text-left">
                         <div className="flex items-center gap-2.5">
                           <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center flex-shrink-0">
@@ -135,11 +133,8 @@ export const RecentSales = () => {
                           </div>
                           <div className="min-w-0">
                             <p className="font-bold text-slate-800 text-xs truncate max-w-[140px]">
-                              {order.customer?.name || 'Cliente Mostrador'}
+                              {order.customer?.name || 'Consumidor Final'}
                             </p>
-                            <span className="text-[10px] text-slate-400 font-normal">
-                              {itemsCount} {itemsCount === 1 ? 'producto' : 'productos'}
-                            </span>
                           </div>
                         </div>
                       </td>
@@ -201,7 +196,7 @@ export const RecentSales = () => {
       {recentOrders.length > 0 && (
         <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
           <span className="text-[11px] text-slate-400 font-medium">
-            Mostrando las últimas {recentOrders.length} ventas realizadas
+            Mostrando {recentOrders.length} {recentOrders.length === 1 ? 'venta' : 'ventas'} ({periodLabel})
           </span>
           <button
             onClick={() => setActiveTab('sales')}

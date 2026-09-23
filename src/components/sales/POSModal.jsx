@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   X,
@@ -22,7 +22,9 @@ import {
   Tag,
   UserPlus,
   Phone,
-  Mail
+  Mail,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 
 export const POSModal = ({ isOpen, onClose }) => {
@@ -32,13 +34,45 @@ export const POSModal = ({ isOpen, onClose }) => {
   const [posTab, setPosTab] = useState('products'); // 'products' | 'services'
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedCustomer, setSelectedCustomer] = useState(null); // null = Cliente Mostrador by default
+  const [selectedCustomer, setSelectedCustomer] = useState(null); // null = Consumidor Final by default
   const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Efectivo');
   const [cashGiven, setCashGiven] = useState('');
   const [initialPayment, setInitialPayment] = useState('');
   const [discountPercent, setDiscountPercent] = useState(0);
+
+  // View mode: 'grid' (con fotos WebP) | 'list' (lista compacta rápida sin fotos)
+  const [viewMode, setViewMode] = useState(() => {
+    try {
+      return localStorage.getItem('stockly_pos_view_mode') || 'grid';
+    } catch {
+      return 'grid';
+    }
+  });
+
+  const handleToggleViewMode = (mode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('stockly_pos_view_mode', mode);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Virtual scrolling / Lazy progressive rendering
+  const [visibleCount, setVisibleCount] = useState(24);
+
+  useEffect(() => {
+    setVisibleCount(24);
+  }, [searchTerm, selectedCategory, posTab]);
+
+  const handleScrollCatalog = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 250) {
+      setVisibleCount((prev) => prev + 24);
+    }
+  };
 
   // Quick create service modal state (Persists in PostgreSQL catalog)
   const [showCreateServiceModal, setShowCreateServiceModal] = useState(false);
@@ -73,6 +107,10 @@ export const POSModal = ({ isOpen, onClose }) => {
     const matchesCat = selectedCategory === 'all' || s.category === selectedCategory;
     return matchesSearch && matchesCat;
   });
+
+  // Windowed / virtualized slices for progressive rendering
+  const displayedProducts = filteredProducts.slice(0, visibleCount);
+  const displayedServices = filteredServices.slice(0, visibleCount);
 
   // Cart operations
   const addToCart = (product) => {
@@ -243,7 +281,7 @@ export const POSModal = ({ isOpen, onClose }) => {
     const salePayload = {
       customer: selectedCustomer
         ? { id: selectedCustomer.id, name: selectedCustomer.name, email: selectedCustomer.email, phone: selectedCustomer.phone }
-        : { id: null, name: "Cliente Mostrador", email: "general@cliente.com", phone: "N/A" },
+        : { id: null, name: "Consumidor Final", email: "general@cliente.com", phone: "N/A" },
       total: grandTotal,
       subtotal: rawSubtotal,
       tax: 0,
@@ -329,16 +367,48 @@ export const POSModal = ({ isOpen, onClose }) => {
             </div>
           </div>
 
-          {/* Search Box */}
-          <div className="relative flex-shrink-0">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder={posTab === 'products' ? "Buscar producto por nombre, SKU o código..." : "Buscar servicio..."}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200/90 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 shadow-2xs"
-            />
+          {/* Search Box & View Mode Toggle */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder={posTab === 'products' ? "Buscar producto por nombre, SKU o código..." : "Buscar servicio..."}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200/90 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 shadow-2xs"
+              />
+            </div>
+
+            {/* Toggle de Modo de Vista (Cuadrícula con fotos WebP vs Lista compacta) */}
+            <div className="flex items-center p-1 bg-white border border-slate-200/90 rounded-2xl shadow-2xs">
+              <button
+                type="button"
+                onClick={() => handleToggleViewMode('grid')}
+                title="Vista en cuadrícula con fotos"
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  viewMode === 'grid'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/70'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Fotos</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleToggleViewMode('list')}
+                title="Vista en lista compacta ultra rápida"
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  viewMode === 'list'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/70'
+                }`}
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Lista</span>
+              </button>
+            </div>
           </div>
 
           {/* Category Pills Selector */}
@@ -391,73 +461,149 @@ export const POSModal = ({ isOpen, onClose }) => {
             )}
           </div>
 
-          {/* Catalog Grid */}
-          <div className="flex-1 overflow-y-auto mt-3 pr-1 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-3.5 content-start auto-rows-max">
-            {/* PRODUCTS TAB GRID */}
+          {/* Catalog Container with Virtualized / Progressive Scrolling */}
+          <div onScroll={handleScrollCatalog} className="flex-1 overflow-y-auto mt-3 pr-1">
+            {/* PRODUCTS TAB */}
             {posTab === 'products' && (
               <>
-                {filteredProducts.map((product) => {
-                  const inCartItem = cart.find((i) => !i.isService && i.productId === product.id);
-                  const isOut = product.stock <= 0;
+                {viewMode === 'grid' ? (
+                  /* Grid View (Cards with WebP Thumbnails) */
+                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-3.5 content-start auto-rows-max">
+                    {displayedProducts.map((product) => {
+                      const inCartItem = cart.find((i) => !i.isService && i.productId === product.id);
+                      const isOut = product.stock <= 0;
 
-                  return (
-                    <div
-                      key={product.id}
-                      onClick={() => !isOut && addToCart(product)}
-                      className={`bg-white p-3 rounded-2xl border transition-all duration-200 flex flex-col cursor-pointer group relative ${isOut
-                          ? 'opacity-50 cursor-not-allowed border-slate-200'
-                          : inCartItem
-                            ? 'border-blue-500 shadow-md ring-1 ring-blue-500/30'
-                            : 'border-slate-200/80 hover:border-blue-400 hover:shadow-md active:scale-98'
-                        }`}
-                    >
-                      {inCartItem && (
-                        <span className="absolute top-2 right-2 z-10 px-2 py-0.5 bg-blue-600 text-white font-extrabold text-[10px] rounded-full shadow-md">
-                          {inCartItem.quantity} en ticket
-                        </span>
-                      )}
+                      return (
+                        <div
+                          key={product.id}
+                          onClick={() => !isOut && addToCart(product)}
+                          className={`bg-white p-3 rounded-2xl border transition-all duration-200 flex flex-col cursor-pointer group relative ${
+                            isOut
+                              ? 'opacity-50 cursor-not-allowed border-slate-200'
+                              : inCartItem
+                                ? 'border-blue-500 shadow-md ring-1 ring-blue-500/30'
+                                : 'border-slate-200/80 hover:border-blue-400 hover:shadow-md active:scale-98'
+                          }`}
+                        >
+                          {inCartItem && (
+                            <span className="absolute top-2 right-2 z-10 px-2 py-0.5 bg-blue-600 text-white font-extrabold text-[10px] rounded-full shadow-md">
+                              {inCartItem.quantity} en ticket
+                            </span>
+                          )}
 
-                      <div className="w-full h-32 bg-slate-50/80 rounded-xl flex items-center justify-center p-2 overflow-hidden border border-slate-100 group-hover:border-blue-100 transition-colors mb-2">
-                        {product.image ? (
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200 drop-shadow-2xs"
-                          />
-                        ) : (
-                          <Package className="w-9 h-9 text-slate-300" />
-                        )}
-                      </div>
+                          <div className="w-full h-32 bg-slate-50/80 rounded-xl flex items-center justify-center p-2 overflow-hidden border border-slate-100 group-hover:border-blue-100 transition-colors mb-2">
+                            {product.image ? (
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                loading="lazy"
+                                decoding="async"
+                                className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200 drop-shadow-2xs"
+                              />
+                            ) : (
+                              <Package className="w-9 h-9 text-slate-300" />
+                            )}
+                          </div>
 
-                      <div>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-                          {product.category || 'General'}
-                        </span>
-                        <h5 className="font-bold text-xs text-slate-800 line-clamp-1 group-hover:text-blue-600 transition-colors mt-0.5" title={product.name}>
-                          {product.name}
-                        </h5>
-                      </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                              {product.category || 'General'}
+                            </span>
+                            <h5 className="font-bold text-xs text-slate-800 line-clamp-1 group-hover:text-blue-600 transition-colors mt-0.5" title={product.name}>
+                              {product.name}
+                            </h5>
+                          </div>
 
-                      <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-slate-100">
-                        <div>
-                          <span className="font-extrabold text-sm text-slate-900 block leading-tight">
-                            {formatCurrency(product.sellPrice)}
-                          </span>
-                          <span className={`text-[10px] font-semibold ${product.stock <= 5 ? 'text-rose-500' : 'text-slate-400'}`}>
-                            Stock: {product.stock}
-                          </span>
+                          <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-slate-100">
+                            <div>
+                              <span className="font-extrabold text-sm text-slate-900 block leading-tight">
+                                {formatCurrency(product.sellPrice)}
+                              </span>
+                              <span className={`text-[10px] font-semibold ${product.stock <= 5 ? 'text-rose-500' : 'text-slate-400'}`}>
+                                Stock: {product.stock}
+                              </span>
+                            </div>
+
+                            <div className="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center transition-colors shadow-2xs">
+                              <Plus className="w-4 h-4" />
+                            </div>
+                          </div>
                         </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* Compact List View (Fast, text-focused, no heavy images) */
+                  <div className="flex flex-col gap-2">
+                    {displayedProducts.map((product) => {
+                      const inCartItem = cart.find((i) => !i.isService && i.productId === product.id);
+                      const isOut = product.stock <= 0;
 
-                        <div className="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center transition-colors shadow-2xs">
-                          <Plus className="w-4 h-4" />
+                      return (
+                        <div
+                          key={product.id}
+                          onClick={() => !isOut && addToCart(product)}
+                          className={`flex items-center justify-between p-3 rounded-2xl bg-white border transition-all duration-150 cursor-pointer ${
+                            isOut
+                              ? 'opacity-50 cursor-not-allowed border-slate-200'
+                              : inCartItem
+                                ? 'border-blue-500 bg-blue-50/20 shadow-xs ring-1 ring-blue-500/20'
+                                : 'border-slate-200/80 hover:border-blue-400 hover:shadow-xs hover:bg-slate-50/80 active:scale-99'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                              inCartItem
+                                ? 'bg-blue-600 text-white font-black text-xs shadow-xs'
+                                : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              {inCartItem ? `${inCartItem.quantity}×` : <Package className="w-4 h-4 text-slate-400" />}
+                            </div>
+
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h5 className="font-bold text-xs text-slate-800 truncate" title={product.name}>
+                                  {product.name}
+                                </h5>
+                                {product.sku && (
+                                  <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-mono text-[10px] font-semibold flex-shrink-0">
+                                    {product.sku}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-[11px] mt-0.5">
+                                <span className="text-slate-400">{product.category || 'General'}</span>
+                                <span className="text-slate-300">•</span>
+                                <span className={`font-semibold ${product.stock <= 5 ? 'text-rose-500' : 'text-slate-500'}`}>
+                                  Stock: {product.stock}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+                            <span className="font-extrabold text-sm text-slate-900">
+                              {formatCurrency(product.sellPrice)}
+                            </span>
+                            <div className="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white flex items-center justify-center transition-colors shadow-2xs">
+                              <Plus className="w-4 h-4" />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Progressive load indicator */}
+                {filteredProducts.length > displayedProducts.length && (
+                  <div className="py-3 text-center text-xs font-semibold text-slate-400 animate-pulse">
+                    Mostrando {displayedProducts.length} de {filteredProducts.length} productos (desplaza para cargar más)
+                  </div>
+                )}
 
                 {filteredProducts.length === 0 && (
-                  <div className="col-span-full py-12 flex flex-col items-center justify-center text-slate-400 text-center">
+                  <div className="py-12 flex flex-col items-center justify-center text-slate-400 text-center">
                     <Package className="w-10 h-10 mb-2 text-slate-300" />
                     <p className="font-bold text-sm text-slate-700">No se encontraron productos</p>
                     <p className="text-xs text-slate-400 mt-0.5">Prueba buscando con otro término o categoría.</p>
@@ -466,82 +612,148 @@ export const POSModal = ({ isOpen, onClose }) => {
               </>
             )}
 
-            {/* SERVICES TAB GRID */}
+            {/* SERVICES TAB */}
             {posTab === 'services' && (
               <>
-                {filteredServices.map((service) => {
-                  const inCartItem = cart.find((i) => i.isService && i.serviceId === service.id);
-                  const hasPrice = Number(service.defaultPrice || 0) > 0;
+                {viewMode === 'grid' ? (
+                  /* Grid View Services */
+                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-3.5 content-start auto-rows-max">
+                    {displayedServices.map((service) => {
+                      const inCartItem = cart.find((i) => i.isService && i.serviceId === service.id);
+                      const hasPrice = Number(service.defaultPrice || 0) > 0;
 
-                  return (
-                    <div
-                      key={service.id}
-                      onClick={() => addServiceToCart(service)}
-                      className={`bg-white p-3 rounded-2xl border transition-all duration-200 flex flex-col justify-between cursor-pointer group relative ${
-                        inCartItem
-                          ? 'border-amber-500 shadow-md ring-1 ring-amber-500/30'
-                          : 'border-slate-200/80 hover:border-amber-400 hover:shadow-md active:scale-98'
-                      }`}
-                    >
-                      {inCartItem && (
-                        <span className="absolute top-2 right-2 z-10 px-2 py-0.5 bg-amber-600 text-white font-extrabold text-[10px] rounded-full shadow-md">
-                          {inCartItem.quantity} en ticket
-                        </span>
-                      )}
-
-                      {/* Delete Service Button on Hover */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (window.confirm(`¿Estás seguro de eliminar el servicio "${service.name}" del catálogo?`)) {
-                            deleteService(service.id);
-                          }
-                        }}
-                        className="absolute top-2 left-2 z-10 w-6 h-6 rounded-lg bg-white/95 hover:bg-rose-50 text-slate-400 hover:text-rose-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all border border-slate-200 shadow-2xs cursor-pointer"
-                        title="Eliminar este servicio del catálogo"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-
-                      <div>
-                        <div className="w-full h-24 bg-amber-50/60 rounded-xl flex items-center justify-center p-2 overflow-hidden border border-amber-100/80 group-hover:border-amber-200 transition-colors mb-2">
-                          <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shadow-xs">
-                            <Zap className="w-7 h-7 fill-amber-500 text-amber-500" />
-                          </div>
-                        </div>
-
-                        <span className="text-[10px] text-amber-700 font-bold uppercase tracking-wider block">
-                          {service.category || 'Servicios'}
-                        </span>
-                        <h5 className="font-bold text-xs text-slate-900 line-clamp-2 group-hover:text-amber-700 transition-colors mt-0.5" title={service.name}>
-                          {service.name}
-                        </h5>
-                      </div>
-
-                      <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-100">
-                        <div>
-                          {hasPrice ? (
-                            <span className="font-extrabold text-sm text-slate-900 block leading-tight">
-                              {formatCurrency(service.defaultPrice)}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md block">
-                              Monto variable
+                      return (
+                        <div
+                          key={service.id}
+                          onClick={() => addServiceToCart(service)}
+                          className={`bg-white p-3 rounded-2xl border transition-all duration-200 flex flex-col justify-between cursor-pointer group relative ${
+                            inCartItem
+                              ? 'border-amber-500 shadow-md ring-1 ring-amber-500/30'
+                              : 'border-slate-200/80 hover:border-amber-400 hover:shadow-md active:scale-98'
+                          }`}
+                        >
+                          {inCartItem && (
+                            <span className="absolute top-2 right-2 z-10 px-2 py-0.5 bg-amber-600 text-white font-extrabold text-[10px] rounded-full shadow-md">
+                              {inCartItem.quantity} en ticket
                             </span>
                           )}
-                        </div>
 
-                        <div className="w-7 h-7 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white flex items-center justify-center transition-colors shadow-2xs">
-                          <Plus className="w-4 h-4" />
+                          {/* Delete Service Button on Hover */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`¿Estás seguro de eliminar el servicio "${service.name}" del catálogo?`)) {
+                                deleteService(service.id);
+                              }
+                            }}
+                            className="absolute top-2 left-2 z-10 w-6 h-6 rounded-lg bg-white/95 hover:bg-rose-50 text-slate-400 hover:text-rose-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all border border-slate-200 shadow-2xs cursor-pointer"
+                            title="Eliminar este servicio del catálogo"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+
+                          <div>
+                            <div className="w-full h-24 bg-amber-50/60 rounded-xl flex items-center justify-center p-2 overflow-hidden border border-amber-100/80 group-hover:border-amber-200 transition-colors mb-2">
+                              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shadow-xs">
+                                <Zap className="w-7 h-7 fill-amber-500 text-amber-500" />
+                              </div>
+                            </div>
+
+                            <span className="text-[10px] text-amber-700 font-bold uppercase tracking-wider block">
+                              {service.category || 'Servicios'}
+                            </span>
+                            <h5 className="font-bold text-xs text-slate-900 line-clamp-2 group-hover:text-amber-700 transition-colors mt-0.5" title={service.name}>
+                              {service.name}
+                            </h5>
+                          </div>
+
+                          <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-100">
+                            <div>
+                              {hasPrice ? (
+                                <span className="font-extrabold text-sm text-slate-900 block leading-tight">
+                                  {formatCurrency(service.defaultPrice)}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md block">
+                                  Monto variable
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="w-7 h-7 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white flex items-center justify-center transition-colors shadow-2xs">
+                              <Plus className="w-4 h-4" />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* Compact List View Services */
+                  <div className="flex flex-col gap-2">
+                    {displayedServices.map((service) => {
+                      const inCartItem = cart.find((i) => i.isService && i.serviceId === service.id);
+                      const hasPrice = Number(service.defaultPrice || 0) > 0;
+
+                      return (
+                        <div
+                          key={service.id}
+                          onClick={() => addServiceToCart(service)}
+                          className={`flex items-center justify-between p-3 rounded-2xl bg-white border transition-all duration-150 cursor-pointer group ${
+                            inCartItem
+                              ? 'border-amber-500 bg-amber-50/20 shadow-xs ring-1 ring-amber-500/20'
+                              : 'border-slate-200/80 hover:border-amber-400 hover:shadow-xs hover:bg-slate-50/80 active:scale-99'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                              inCartItem
+                                ? 'bg-amber-500 text-white font-black text-xs shadow-xs'
+                                : 'bg-amber-50 text-amber-600'
+                            }`}>
+                              {inCartItem ? `${inCartItem.quantity}×` : <Zap className="w-4 h-4 fill-amber-500 text-amber-500" />}
+                            </div>
+
+                            <div className="min-w-0">
+                              <h5 className="font-bold text-xs text-slate-800 truncate" title={service.name}>
+                                {service.name}
+                              </h5>
+                              <span className="text-[11px] text-amber-700 font-semibold block mt-0.5">
+                                {service.category || 'Servicios'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+                            {hasPrice ? (
+                              <span className="font-extrabold text-sm text-slate-900">
+                                {formatCurrency(service.defaultPrice)}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200/60">
+                                Variable
+                              </span>
+                            )}
+                            <div className="w-7 h-7 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white flex items-center justify-center transition-colors shadow-2xs">
+                              <Plus className="w-4 h-4" />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Progressive load indicator */}
+                {filteredServices.length > displayedServices.length && (
+                  <div className="py-3 text-center text-xs font-semibold text-slate-400 animate-pulse">
+                    Mostrando {displayedServices.length} de {filteredServices.length} servicios (desplaza para cargar más)
+                  </div>
+                )}
 
                 {filteredServices.length === 0 && (
-                  <div className="col-span-full py-12 flex flex-col items-center justify-center text-slate-400 text-center">
+                  <div className="py-12 flex flex-col items-center justify-center text-slate-400 text-center">
                     <Zap className="w-10 h-10 mb-2 text-amber-300 fill-amber-300" />
                     <p className="font-bold text-sm text-slate-700">No hay servicios registrados</p>
                     <p className="text-xs text-slate-400 mt-0.5">
@@ -603,7 +815,7 @@ export const POSModal = ({ isOpen, onClose }) => {
                 </div>
                 <div className="min-w-0">
                   <span className="block text-xs font-extrabold text-slate-900 truncate">
-                    {selectedCustomer ? selectedCustomer.name : 'Cliente Mostrador (Venta Rápida)'}
+                    {selectedCustomer ? selectedCustomer.name : 'Consumidor Final'}
                   </span>
                 </div>
               </div>
@@ -657,7 +869,7 @@ export const POSModal = ({ isOpen, onClose }) => {
 
                   {/* List of Customers (Name Only) */}
                   <div className="overflow-y-auto space-y-1 flex-1 max-h-48 pr-0.5">
-                    {/* Default Option: Cliente Mostrador */}
+                    {/* Default Option: Consumidor Final */}
                     <button
                       type="button"
                       onClick={() => {
@@ -675,7 +887,7 @@ export const POSModal = ({ isOpen, onClose }) => {
                         <div className="w-6 h-6 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center text-xs flex-shrink-0">
                           <User className="w-3 h-3" />
                         </div>
-                        <span className="truncate">Cliente Mostrador (Venta Rápida)</span>
+                        <span className="truncate">Consumidor Final</span>
                       </div>
                       {!selectedCustomer && (
                         <Check className="w-4 h-4 text-blue-600 flex-shrink-0" />
@@ -1171,7 +1383,7 @@ export const POSModal = ({ isOpen, onClose }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Teléfono / WhatsApp
+                    Teléfono
                   </label>
                   <input
                     type="text"
