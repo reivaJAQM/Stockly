@@ -201,6 +201,22 @@ export const initDB = async () => {
       );
     `);
 
+    // 10. Notifications Table (Persistent state)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id VARCHAR(100) PRIMARY KEY,
+        type VARCHAR(50) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        time VARCHAR(100),
+        link_tab VARCHAR(50),
+        link_id VARCHAR(100),
+        read BOOLEAN DEFAULT FALSE,
+        dismissed BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     client.release();
     console.log('✅ Tablas relacionales inicializadas en PostgreSQL');
   } catch (error) {

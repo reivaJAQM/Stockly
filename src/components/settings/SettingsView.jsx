@@ -98,9 +98,6 @@ export const SettingsView = () => {
         <h1 className="text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight">
           Configuración del Negocio
         </h1>
-        <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-          Personaliza los datos de tu empresa, moneda, tasa de impuestos y copias de seguridad.
-        </p>
       </div>
 
       {savedSuccess && (

@@ -104,7 +104,7 @@ export const RecentSales = ({ orders, periodLabel = 'hoy', activeRange = 'today'
               <thead className="sticky top-0 bg-white z-10">
                 <tr className="text-[11px] font-semibold text-slate-400 border-b border-slate-100/90 pb-3">
                   <th className="pb-3 px-2 text-left font-semibold w-[15%]">Orden</th>
-                  <th className="pb-3 px-2 text-left font-semibold w-[26%]">Cliente</th>
+                  <th className="pb-3 px-2 text-center font-semibold w-[26%]">Cliente</th>
                   <th className="pb-3 px-2 text-center font-semibold w-[14%] hidden md:table-cell">Pago</th>
                   <th className="pb-3 px-2 text-center font-semibold w-[15%] hidden sm:table-cell">Fecha</th>
                   <th className="pb-3 px-2 text-center font-semibold w-[10%]">Total</th>
@@ -126,17 +126,10 @@ export const RecentSales = ({ orders, periodLabel = 'hoy', activeRange = 'today'
                       </td>
 
                       {/* Cliente */}
-                      <td className="py-3.5 px-2 text-left">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center flex-shrink-0">
-                            {(order.customer?.name || 'C').charAt(0).toUpperCase()}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-bold text-slate-800 text-xs truncate max-w-[140px]">
-                              {order.customer?.name || 'Consumidor Final'}
-                            </p>
-                          </div>
-                        </div>
+                      <td className="py-3.5 px-2 text-center">
+                        <span className="font-bold text-slate-800 text-xs truncate inline-block max-w-[160px]">
+                          {order.customer?.name || 'Consumidor Final'}
+                        </span>
                       </td>
 
                       {/* Método de Pago */}

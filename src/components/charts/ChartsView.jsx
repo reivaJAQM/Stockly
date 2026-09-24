@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { StatCard } from '../dashboard/StatCard';
 import { SalesChart } from '../dashboard/SalesChart';
 import { ChannelDonut } from '../dashboard/ChannelDonut';
 import {
@@ -20,12 +21,85 @@ import {
 } from 'lucide-react';
 
 export const ChartsView = () => {
-  const { data, formatCurrency, showToast } = useApp();
-  const [timeRange, setTimeRange] = useState('30days');
+  const { data, formatCurrency } = useApp();
+  const [timeRange, setTimeRange] = useState('today');
 
-  // Key Financial Metrics
-  const totalSales = Number(data.kpis?.totalSales || 0);
-  const totalExpenses = (data.expenses || []).reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  const timeOptions = [
+    { id: 'today', label: 'Hoy' },
+    { id: 'thisWeek', label: 'Esta semana' },
+    { id: 'thisMonth', label: 'Este mes' },
+    { id: 'thisYear', label: 'Este año' },
+    { id: 'all', label: 'Todo' }
+  ];
+
+  // Helper to parse and compare dates accurately
+  const isDateInSelectedRange = (dateInput, range) => {
+    if (!dateInput) return false;
+    if (range === 'all') return true;
+
+    const dateStr = String(dateInput);
+    const itemDate = new Date(dateStr.length === 10 ? `${dateStr}T12:00:00` : dateStr);
+    if (isNaN(itemDate.getTime())) return true;
+
+    const currentNow = new Date();
+    const todayStart = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate(), 0, 0, 0, 0);
+    const todayEnd = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate(), 23, 59, 59, 999);
+
+    if (range === 'today') {
+      return itemDate >= todayStart && itemDate <= todayEnd;
+    }
+
+    if (range === 'thisWeek') {
+      const dayOfWeek = currentNow.getDay();
+      const diffToMonday = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+      const weekStart = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate() + diffToMonday, 0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      return itemDate >= weekStart && itemDate <= weekEnd;
+    }
+
+    if (range === 'thisMonth') {
+      const monthStart = new Date(currentNow.getFullYear(), currentNow.getMonth(), 1, 0, 0, 0, 0);
+      const monthEnd = new Date(currentNow.getFullYear(), currentNow.getMonth() + 1, 0, 23, 59, 59, 999);
+      return itemDate >= monthStart && itemDate <= monthEnd;
+    }
+
+    if (range === 'thisYear') {
+      const yearStart = new Date(currentNow.getFullYear(), 0, 1, 0, 0, 0, 0);
+      const yearEnd = new Date(currentNow.getFullYear(), 11, 31, 23, 59, 59, 999);
+      return itemDate >= yearStart && itemDate <= yearEnd;
+    }
+
+    return true;
+  };
+
+  // Orders and expenses filtered dynamically by the selected period
+  const periodOrders = useMemo(() => {
+    return (data.orders || []).filter((o) => {
+      if (o.status === 'Cancelado') return false;
+      return isDateInSelectedRange(o.createdAt || o.date, timeRange);
+    });
+  }, [data.orders, timeRange]);
+
+  const periodExpenses = useMemo(() => {
+    return (data.expenses || []).filter((e) => {
+      return isDateInSelectedRange(e.date || e.createdAt, timeRange);
+    });
+  }, [data.expenses, timeRange]);
+
+  // Key Financial Metrics matching the selected period
+  const totalSales = useMemo(() => {
+    if (timeRange === 'all' && periodOrders.length === 0 && Number(data.kpis?.totalSales || 0) > 0) {
+      return Number(data.kpis.totalSales);
+    }
+    return periodOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+  }, [periodOrders, timeRange, data.kpis?.totalSales]);
+
+  const totalExpenses = useMemo(() => {
+    return periodExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  }, [periodExpenses]);
+
   const netProfit = totalSales - totalExpenses;
   const netMargin = totalSales > 0 ? ((netProfit / totalSales) * 100).toFixed(1) : 0;
 
@@ -58,17 +132,18 @@ export const ChartsView = () => {
   );
 
   // Group expenses by category
+  const activeExpensesForCategory = periodExpenses.length > 0 ? periodExpenses : (data.expenses || []);
   const expenseByCategory = useMemo(() => {
-    return (data.expenses || []).reduce((acc, curr) => {
-      const cat = curr.category || 'Varios';
+    return activeExpensesForCategory.reduce((acc, curr) => {
+      const cat = curr.category || 'General';
       acc[cat] = (acc[cat] || 0) + (Number(curr.amount) || 0);
       return acc;
     }, {});
-  }, [data.expenses]);
+  }, [activeExpensesForCategory]);
 
   const expenseCategories = Object.entries(expenseByCategory);
 
-  // Monthly Sales vs Expenses Comparison Data (Last 6 Months)
+  // Monthly Sales vs Expenses Comparison Data (Last 6 Months) with proper date parsing
   const monthlyComparison = useMemo(() => {
     const months = [];
     const now = new Date();
@@ -81,7 +156,13 @@ export const ChartsView = () => {
       // Sum sales for this month
       let mSales = 0;
       (data.orders || []).forEach((o) => {
-        if (o.date && o.date.startsWith(yearMonth)) {
+        if (o.status === 'Cancelado') return;
+        const rawD = o.createdAt || o.date;
+        if (!rawD) return;
+        const dOrder = new Date(rawD);
+        if (isNaN(dOrder.getTime())) return;
+        const oYearMonth = `${dOrder.getFullYear()}-${String(dOrder.getMonth() + 1).padStart(2, '0')}`;
+        if (oYearMonth === yearMonth) {
           mSales += Number(o.total || 0);
         }
       });
@@ -89,17 +170,19 @@ export const ChartsView = () => {
       // Sum expenses for this month
       let mExpenses = 0;
       (data.expenses || []).forEach((e) => {
-        if (e.date && e.date.startsWith(yearMonth)) {
+        const rawD = e.date || e.createdAt;
+        if (!rawD) return;
+        const dExp = new Date(rawD);
+        if (isNaN(dExp.getTime())) return;
+        const eYearMonth = `${dExp.getFullYear()}-${String(dExp.getMonth() + 1).padStart(2, '0')}`;
+        if (eYearMonth === yearMonth) {
           mExpenses += Number(e.amount || 0);
         }
       });
 
-      // If it's the current month and data.kpis has sales, ensure current month is populated
-      if (i === 0 && mSales === 0 && totalSales > 0) {
-        mSales = totalSales;
-      }
-      if (i === 0 && mExpenses === 0 && totalExpenses > 0) {
-        mExpenses = totalExpenses;
+      // If current month and data.kpis has sales, ensure current month has at least that
+      if (i === 0 && mSales === 0 && Number(data.kpis?.totalSales || 0) > 0) {
+        mSales = Number(data.kpis.totalSales);
       }
 
       months.push({
@@ -110,7 +193,7 @@ export const ChartsView = () => {
     }
 
     return months;
-  }, [data.orders, data.expenses, totalSales, totalExpenses]);
+  }, [data.orders, data.expenses, data.kpis?.totalSales]);
 
   const maxMonthVal = Math.max(
     10,
@@ -122,33 +205,20 @@ export const ChartsView = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight">
-              Gráficos y Estadísticas
-            </h1>
-            <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold text-xs border border-blue-200/60">
-              Analítica en vivo
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-            Métricas visuales de ventas, ingresos, gastos, métodos de cobro y rentabilidad.
-          </p>
+          <h1 className="text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight">
+            Gráficos y Estadísticas
+          </h1>
         </div>
 
         {/* Stockly Signature Segmented Date Filter */}
-        <div className="self-start sm:self-auto bg-slate-100/90 p-1 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-1">
-          {[
-            { id: 'today', label: 'Hoy' },
-            { id: 'thisWeek', label: 'Esta semana' },
-            { id: 'thisMonth', label: 'Este mes' },
-            { id: 'thisYear', label: 'Este año' }
-          ].map((opt) => {
-            const isSelected = (timeRange || 'today') === opt.id;
+        <div className="self-start sm:self-auto bg-slate-100/90 p-1 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-1 overflow-x-auto">
+          {timeOptions.map((opt) => {
+            const isSelected = timeRange === opt.id;
             return (
               <button
                 key={opt.id}
                 onClick={() => setTimeRange(opt.id)}
-                className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 select-none ${
+                className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 select-none cursor-pointer whitespace-nowrap ${
                   isSelected
                     ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 active:scale-95'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/70 active:scale-98'
@@ -161,86 +231,41 @@ export const ChartsView = () => {
         </div>
       </div>
 
-      {/* Row 1: KPI Overview Cards */}
+      {/* Row 1: KPI Overview Cards - Identical to other modules */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Ingresos */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100/90 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-slate-500">Ingresos Totales</span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-          </div>
-          <div>
-            <h4 className="text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight">
-              {formatCurrency(totalSales)}
-            </h4>
-            <span className="text-[11px] text-emerald-600 font-semibold mt-1 inline-flex items-center gap-1">
-              <ArrowUpRight className="w-3 h-3" />
-              {(data.orders || []).length} ventas procesadas
-            </span>
-          </div>
-        </div>
+        <StatCard
+          title="Ingresos Totales"
+          value={formatCurrency(totalSales)}
+          icon={DollarSign}
+          iconBg="bg-blue-50 border-blue-100 text-blue-600"
+        />
 
-        {/* Gastos */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100/90 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-slate-500">Gastos Totales</span>
-            <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
-              <TrendingDown className="w-5 h-5" />
-            </div>
-          </div>
-          <div>
-            <h4 className="text-2xl lg:text-3xl font-extrabold text-rose-600 tracking-tight">
-              {formatCurrency(totalExpenses)}
-            </h4>
-            <span className="text-[11px] text-slate-400 font-medium mt-1 block">
-              {(data.expenses || []).length} egresos en caja
-            </span>
-          </div>
-        </div>
+        <StatCard
+          title="Gastos Totales"
+          value={formatCurrency(totalExpenses)}
+          icon={TrendingDown}
+          iconBg="bg-rose-50 border-rose-100 text-rose-600"
+        />
 
-        {/* Utilidad Neta */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100/90 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-slate-500">Utilidad Neta (P&L)</span>
-            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <DollarSign className="w-5 h-5" />
-            </div>
-          </div>
-          <div>
-            <h4 className={`text-2xl lg:text-3xl font-extrabold tracking-tight ${netProfit >= 0 ? 'text-blue-600' : 'text-rose-600'}`}>
-              {formatCurrency(netProfit)}
-            </h4>
-            <span className="text-[11px] text-slate-500 font-medium mt-1 block">
-              Ingresos − Gastos
-            </span>
-          </div>
-        </div>
+        <StatCard
+          title="Utilidad Neta"
+          value={formatCurrency(netProfit)}
+          icon={Wallet}
+          iconBg={netProfit >= 0 ? "bg-emerald-50 border-emerald-100 text-emerald-600" : "bg-rose-50 border-rose-100 text-rose-600"}
+        />
 
-        {/* Margen */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100/90 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-slate-500">Margen Operativo</span>
-            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-              <Percent className="w-5 h-5" />
-            </div>
-          </div>
-          <div>
-            <h4 className="text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight">
-              {netMargin}%
-            </h4>
-            <span className="text-[11px] text-purple-600 font-semibold mt-1 block">
-              Rentabilidad neta comercial
-            </span>
-          </div>
-        </div>
+        <StatCard
+          title="Margen Operativo"
+          value={`${netMargin}%`}
+          icon={Percent}
+          iconBg="bg-purple-50 border-purple-100 text-purple-600"
+        />
       </div>
 
       {/* Row 2: Gráfico de Ingresos por Ventas + Gráfico de Métodos de Pago */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         <div className="lg:col-span-7 xl:col-span-8 h-full">
-          <SalesChart />
+          <SalesChart timeRange={timeRange} totalSales={totalSales} />
         </div>
         <div className="lg:col-span-5 xl:col-span-4 h-full">
           <ChannelDonut />

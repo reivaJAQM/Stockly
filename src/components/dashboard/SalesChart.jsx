@@ -1,13 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
-import { ChevronDown, TrendingUp } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 
-export const SalesChart = () => {
+export const SalesChart = ({ timeRange = 'today', totalSales }) => {
   const { data, formatCurrency } = useApp();
-  const [viewType, setViewType] = useState('Diario');
   const [activePoint, setActivePoint] = useState(null);
 
-  // Helper to format Date to YYYY-MM-DD
+  // Helper to format Date safely
+  const parseSafeDate = (raw) => {
+    if (!raw) return null;
+    const str = String(raw);
+    const d = new Date(str.length === 10 ? `${str}T12:00:00` : str);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
   const getIsoString = (d) => {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -15,103 +21,163 @@ export const SalesChart = () => {
     return `${year}-${month}-${day}`;
   };
 
-  // Prepare proportional chart data mapped accurately by ISO date
+  // Prepare chart points dynamically according to the selected timeRange
   const chartPoints = useMemo(() => {
-    const rawData = data.salesChartData || [];
+    const orders = (data.orders || []).filter((o) => o.status !== 'Cancelado');
+    const now = new Date();
 
-    // Build date lookup map keyed by ISO Date (YYYY-MM-DD) and raw date strings
-    const dataMap = {};
-    rawData.forEach((item) => {
-      if (item.dateKey) {
-        dataMap[item.dateKey] = Number(item.value) || 0;
+    // 1. TODAY: Hourly breakdown
+    if (timeRange === 'today') {
+      const todayIso = getIsoString(now);
+      const hoursSlots = [
+        { label: '08:00', startH: 0, endH: 8 },
+        { label: '10:00', startH: 8, endH: 10 },
+        { label: '12:00', startH: 10, endH: 12 },
+        { label: '14:00', startH: 12, endH: 14 },
+        { label: '16:00', startH: 14, endH: 16 },
+        { label: '18:00', startH: 16, endH: 18 },
+        { label: '20:00', startH: 18, endH: 20 },
+        { label: '22:00', startH: 20, endH: 24 }
+      ];
+
+      const hourlyTotals = Array(hoursSlots.length).fill(0);
+
+      orders.forEach((o) => {
+        const d = parseSafeDate(o.createdAt || o.date);
+        if (!d) return;
+        if (getIsoString(d) !== todayIso) return;
+
+        const h = d.getHours();
+        const slotIdx = hoursSlots.findIndex((s) => h >= s.startH && h < s.endH);
+        if (slotIdx !== -1) {
+          hourlyTotals[slotIdx] += Number(o.total || 0);
+        } else {
+          hourlyTotals[hourlyTotals.length - 1] += Number(o.total || 0);
+        }
+      });
+
+      return hoursSlots.map((slot, idx) => ({
+        date: slot.label,
+        value: hourlyTotals[idx]
+      }));
+    }
+
+    // 2. THIS WEEK: Monday through Sunday of current week
+    if (timeRange === 'thisWeek') {
+      const result = [];
+      const ordersMap = {};
+      orders.forEach((o) => {
+        const d = parseSafeDate(o.createdAt || o.date);
+        if (!d) return;
+        const iso = getIsoString(d);
+        ordersMap[iso] = (ordersMap[iso] || 0) + Number(o.total || 0);
+      });
+
+      const dayOfWeek = now.getDay();
+      const diffToMonday = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+      const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday);
+
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i);
+        const isoKey = getIsoString(d);
+        const dayLabel = d.toLocaleDateString('es-ES', { weekday: 'short' });
+        const dateStr = `${dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1)} ${d.getDate()}`;
+        result.push({
+          date: dateStr,
+          isoKey,
+          value: ordersMap[isoKey] || 0
+        });
       }
-      if (item.date) {
-        dataMap[item.date] = Number(item.value) || 0;
-      }
+      return result;
+    }
+
+    // 3. THIS MONTH: 6 regular intervals across current month
+    if (timeRange === 'thisMonth') {
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const monthShort = now.toLocaleDateString('es-ES', { month: 'short' });
+
+      const ordersMap = {};
+      orders.forEach((o) => {
+        const d = parseSafeDate(o.createdAt || o.date);
+        if (!d) return;
+        if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+          const dayNum = d.getDate();
+          ordersMap[dayNum] = (ordersMap[dayNum] || 0) + Number(o.total || 0);
+        }
+      });
+
+      const intervals = [
+        { label: `1-5 ${monthShort}`, start: 1, end: 5 },
+        { label: `6-10 ${monthShort}`, start: 6, end: 10 },
+        { label: `11-15 ${monthShort}`, start: 11, end: 15 },
+        { label: `16-20 ${monthShort}`, start: 16, end: 20 },
+        { label: `21-25 ${monthShort}`, start: 21, end: 25 },
+        { label: `26-${daysInMonth} ${monthShort}`, start: 26, end: daysInMonth }
+      ];
+
+      return intervals.map((interval) => {
+        let sum = 0;
+        for (let d = interval.start; d <= interval.end; d++) {
+          sum += ordersMap[d] || 0;
+        }
+        return {
+          date: interval.label,
+          value: Math.round(sum * 100) / 100
+        };
+      });
+    }
+
+    // 4. THIS YEAR: Months of the current year
+    if (timeRange === 'thisYear') {
+      const currentYear = now.getFullYear();
+      const monthsMap = Array(12).fill(0);
+
+      orders.forEach((o) => {
+        const d = parseSafeDate(o.createdAt || o.date);
+        if (!d) return;
+        if (d.getFullYear() === currentYear) {
+          monthsMap[d.getMonth()] += Number(o.total || 0);
+        }
+      });
+
+      const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      return monthNames.map((name, idx) => ({
+        date: name,
+        value: Math.round(monthsMap[idx] * 100) / 100
+      }));
+    }
+
+    // 5. ALL: Historical monthly trend
+    const result = [];
+    const monthsMap = {};
+    orders.forEach((o) => {
+      const d = parseSafeDate(o.createdAt || o.date);
+      if (!d) return;
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      monthsMap[ym] = (monthsMap[ym] || 0) + Number(o.total || 0);
     });
 
-    if (viewType === 'Diario') {
-      const result = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const isoKey = getIsoString(d);
-        const dateStr = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
-        
-        let val = dataMap[isoKey] ?? dataMap[dateStr] ?? 0;
-        
-        // If today and sum is in totalSales, ensure current day shows total
-        if (i === 0 && val === 0 && Number(data.kpis?.totalSales || 0) > 0) {
-          val = Number(data.kpis?.totalSales || 0);
-        }
-
-        result.push({
-          date: dateStr,
-          isoKey,
-          value: val
-        });
-      }
-      return result;
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleDateString('es-ES', { month: 'short' });
+      result.push({
+        date: label.charAt(0).toUpperCase() + label.slice(1),
+        value: Math.round((monthsMap[ym] || 0) * 100) / 100
+      });
     }
+    return result;
+  }, [data.orders, timeRange]);
 
-    if (viewType === 'Semanal') {
-      const result = [];
-      for (let i = 13; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const isoKey = getIsoString(d);
-        const dateStr = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
-        
-        let val = dataMap[isoKey] ?? dataMap[dateStr] ?? 0;
-        if (i === 0 && val === 0 && Number(data.kpis?.totalSales || 0) > 0) {
-          val = Number(data.kpis?.totalSales || 0);
-        }
-
-        result.push({
-          date: dateStr,
-          isoKey,
-          value: val
-        });
-      }
-      return result;
-    }
-
-    if (viewType === 'Mensual') {
-      const result = [];
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date();
-        d.setMonth(d.getMonth() - i);
-        const monthLabel = d.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
-        const monthPrefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        
-        let monthSum = 0;
-        Object.keys(dataMap).forEach((k) => {
-          if (k.startsWith(monthPrefix)) {
-            monthSum += dataMap[k];
-          }
-        });
-
-        if (i === 0 && monthSum === 0 && Number(data.kpis?.totalSales || 0) > 0) {
-          monthSum = Number(data.kpis?.totalSales || 0);
-        }
-
-        result.push({
-          date: monthLabel,
-          value: monthSum
-        });
-      }
-      return result;
-    }
-
-    return rawData.map((pt) => ({
-      date: pt.date,
-      value: Number(pt.value) || 0
-    }));
-  }, [data.salesChartData, data.kpis?.totalSales, viewType]);
-
-  // Dynamic proportional maximum based on real sales
+  // Dynamic proportional maximum based on actual points in current view
   const values = chartPoints.map((pt) => Number(pt.value) || 0);
-  const highestValue = Math.max(...values, Number(data.kpis?.totalSales || 0), 0);
+  const highestValue = Math.max(...values, 0);
+
+  const totalPeriodRevenue = useMemo(() => {
+    return chartPoints.reduce((sum, pt) => sum + (Number(pt.value) || 0), 0);
+  }, [chartPoints]);
 
   const maxVal = useMemo(() => {
     if (highestValue <= 0) return 20;
@@ -191,9 +257,13 @@ export const SalesChart = () => {
     ? `${pathD} L ${coords[coords.length - 1].x} ${height - paddingY} L ${coords[0].x} ${height - paddingY} Z`
     : '';
 
+  const displayTotal = totalSales !== undefined
+    ? totalSales
+    : (totalPeriodRevenue > 0 ? totalPeriodRevenue : (timeRange === 'all' ? (data.kpis?.totalSales || 0) : 0));
+
   return (
     <div className="bg-white p-6 rounded-3xl border border-slate-100/90 shadow-sm flex flex-col justify-between h-full min-h-[380px]">
-      {/* Header */}
+      {/* Header without internal filter, 100% reactive to top period filter */}
       <div className="flex items-start justify-between mb-4">
         <div>
           <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
@@ -201,22 +271,8 @@ export const SalesChart = () => {
             <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
           </div>
           <h4 className="text-2xl font-extrabold text-slate-900 tracking-tight mt-0.5">
-            {formatCurrency(data.kpis.totalSales)}
+            {formatCurrency(displayTotal)}
           </h4>
-        </div>
-
-        {/* View Switcher */}
-        <div className="relative">
-          <select
-            value={viewType}
-            onChange={(e) => setViewType(e.target.value)}
-            className="appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700 py-1.5 pl-3 pr-8 rounded-xl cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors"
-          >
-            <option value="Diario">Diario</option>
-            <option value="Semanal">Semanal</option>
-            <option value="Mensual">Mensual</option>
-          </select>
-          <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
       </div>
 

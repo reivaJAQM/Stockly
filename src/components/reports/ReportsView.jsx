@@ -118,9 +118,6 @@ export const ReportsView = () => {
           <h1 className="text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight">
             Reportes y Analíticas Financieras
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-            Balance general, estado de pérdidas y ganancias (P&L) y exportación contable.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">

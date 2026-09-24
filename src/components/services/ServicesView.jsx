@@ -44,9 +44,6 @@ export const ServicesView = () => {
           <h1 className="text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
             Servicios
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-            Administra tus servicios intangibles, recargas y ventas recurrentes sin control de existencias ni costos.
-          </p>
         </div>
 
         <button

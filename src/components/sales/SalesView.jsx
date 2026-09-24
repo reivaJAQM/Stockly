@@ -14,6 +14,7 @@ import {
   XCircle,
   Calendar,
   CalendarDays,
+  CalendarRange,
   Trash2,
   HandCoins,
   X,
@@ -47,7 +48,7 @@ export const SalesView = () => {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [pickerMode, setPickerMode] = useState('month'); // 'month' | 'year'
   const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const [dateFilter, setDateFilter] = useState('all'); // 'all' | 'today' | 'thisWeek' | 'thisMonth' | 'customMonth' | 'customYear'
+  const [dateFilter, setDateFilter] = useState('today'); // 'all' | 'today' | 'thisWeek' | 'thisMonth' | 'thisYear' | 'customMonth' | 'customYear'
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -76,6 +77,7 @@ export const SalesView = () => {
     { id: 'today', label: 'Hoy', icon: Clock },
     { id: 'thisWeek', label: 'Esta semana', icon: CalendarDays },
     { id: 'thisMonth', label: 'Este mes', icon: Calendar },
+    { id: 'thisYear', label: 'Este año', icon: CalendarRange }
   ];
 
   const isCustomActive = dateFilter === 'customMonth' || dateFilter === 'customYear';
@@ -110,6 +112,12 @@ export const SalesView = () => {
       const monthStart = new Date(currentNow.getFullYear(), currentNow.getMonth(), 1, 0, 0, 0, 0);
       const monthEnd = new Date(currentNow.getFullYear(), currentNow.getMonth() + 1, 0, 23, 59, 59, 999);
       return itemDate >= monthStart && itemDate <= monthEnd;
+    }
+
+    if (range === 'thisYear') {
+      const yearStart = new Date(currentNow.getFullYear(), 0, 1, 0, 0, 0, 0);
+      const yearEnd = new Date(currentNow.getFullYear(), 11, 31, 23, 59, 59, 999);
+      return itemDate >= yearStart && itemDate <= yearEnd;
     }
 
     if (range === 'customMonth') {
@@ -197,13 +205,13 @@ export const SalesView = () => {
     });
   }, [orders, search, statusFilter, paymentFilter, dateFilter, selectedMonth, selectedYear]);
 
-  const hasActiveFilters = search !== '' || statusFilter !== 'all' || paymentFilter !== 'all' || dateFilter !== 'all';
+  const hasActiveFilters = search !== '' || statusFilter !== 'all' || paymentFilter !== 'all' || dateFilter !== 'today';
 
   const handleResetFilters = () => {
     setSearch('');
     setStatusFilter('all');
     setPaymentFilter('all');
-    setDateFilter('all');
+    setDateFilter('today');
   };
 
   const getStatusBadge = (status) => {
@@ -238,9 +246,6 @@ export const SalesView = () => {
           <h1 className="text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight">
             Ventas y Facturación
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-            Registra ventas al contado, a crédito y gestiona abonos de clientes.
-          </p>
         </div>
 
         <div className="flex items-center gap-3 flex-wrap self-start xl:self-auto">
@@ -570,16 +575,11 @@ export const SalesView = () => {
                         {order.id}
                       </td>
 
-                      {/* Cliente (solo nombre con avatar inicial, centrado) */}
+                      {/* Cliente */}
                       <td className="py-3.5 px-3 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center flex-shrink-0">
-                            {(order.customer?.name || 'C').charAt(0).toUpperCase()}
-                          </div>
-                          <span className="font-bold text-slate-800 text-xs truncate max-w-[160px]">
-                            {order.customer?.name || 'Consumidor Final'}
-                          </span>
-                        </div>
+                        <span className="font-bold text-slate-800 text-xs truncate inline-block max-w-[160px]">
+                          {order.customer?.name || 'Consumidor Final'}
+                        </span>
                       </td>
 
                       {/* Método de Pago */}

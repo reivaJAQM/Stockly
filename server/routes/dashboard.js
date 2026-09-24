@@ -1,5 +1,6 @@
 import express from 'express';
 import { pool } from '../db.js';
+import { syncNotifications } from './notifications.js';
 
 const router = express.Router();
 
@@ -83,45 +84,31 @@ router.get('/stats', async (req, res) => {
       ORDER BY DATE_TRUNC('day', created_at) ASC
     `);
 
-    // 8. Dynamic Notifications (Low Stock, Out of Stock, Recent Sales)
-    const lowStockRes = await pool.query(`
-      SELECT id, name, stock, min_stock 
-      FROM products 
-      WHERE stock <= min_stock 
-      ORDER BY stock ASC 
-      LIMIT 5
-    `);
+    // 8. Persistent Notifications from PostgreSQL (Preserves read/dismissed state)
+    try {
+      await syncNotifications(pool);
+    } catch (notifErr) {
+      console.error('Error syncing notifications in dashboard:', notifErr);
+    }
 
-    const recentOrdersRes = await pool.query(`
-      SELECT id, order_number, customer_name, total, TO_CHAR(created_at, 'HH24:MI') AS "time"
-      FROM orders
+    const notifRes = await pool.query(`
+      SELECT 
+        id, 
+        type, 
+        title, 
+        message, 
+        time, 
+        link_tab AS "linkTab", 
+        link_id AS "linkId", 
+        read, 
+        dismissed, 
+        created_at AS "createdAt"
+      FROM notifications
+      WHERE dismissed = FALSE
       ORDER BY created_at DESC
-      LIMIT 5
+      LIMIT 25
     `);
-
-    const notifications = [];
-
-    lowStockRes.rows.forEach((p) => {
-      notifications.push({
-        id: `stock-${p.id}`,
-        type: p.stock === 0 ? 'warning' : 'warning',
-        title: p.stock === 0 ? `🚨 Producto Agotado: ${p.name}` : `⚠️ Stock Bajo: ${p.name}`,
-        message: p.stock === 0 ? 'No quedan existencias disponibles.' : `Quedan solo ${p.stock} unidades en inventario (Mínimo: ${p.min_stock}).`,
-        time: 'Inventario',
-        read: false
-      });
-    });
-
-    recentOrdersRes.rows.forEach((o) => {
-      notifications.push({
-        id: `sale-${o.id}`,
-        type: 'success',
-        title: `Venta ${o.order_number}`,
-        message: `${o.customer_name} — Total: $${Number(o.total).toFixed(2)}`,
-        time: `${o.time} hrs`,
-        read: false
-      });
-    });
+    const notifications = notifRes.rows;
 
     res.json({
       kpis: {

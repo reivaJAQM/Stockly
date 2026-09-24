@@ -249,5 +249,44 @@ export const api = {
     });
     if (!res.ok) throw new Error('Error al eliminar servicio');
     return res.json();
+  },
+
+  // Notifications
+  async getNotifications() {
+    const res = await fetch(`${API_BASE}/notifications`);
+    if (!res.ok) throw new Error('Error al obtener notificaciones');
+    return res.json();
+  },
+
+  async markAllNotificationsRead() {
+    const res = await fetch(`${API_BASE}/notifications/read-all`, {
+      method: 'PUT'
+    });
+    if (!res.ok) throw new Error('Error al marcar notificaciones como leídas');
+    return res.json();
+  },
+
+  async markNotificationRead(id) {
+    const res = await fetch(`${API_BASE}/notifications/${id}/read`, {
+      method: 'PUT'
+    });
+    if (!res.ok) throw new Error('Error al marcar notificación como leída');
+    return res.json();
+  },
+
+  async clearNotifications() {
+    const res = await fetch(`${API_BASE}/notifications/clear`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Error al limpiar notificaciones');
+    return res.json();
+  },
+
+  async deleteNotification(id) {
+    const res = await fetch(`${API_BASE}/notifications/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Error al eliminar notificación');
+    return res.json();
   }
 };

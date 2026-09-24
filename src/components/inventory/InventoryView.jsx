@@ -79,9 +79,6 @@ export const InventoryView = () => {
           <h1 className="text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight">
             Inventario
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-            Administra tus existencias de almacén, costos, precios y entradas de mercancía.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5 self-start sm:self-auto">

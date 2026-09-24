@@ -81,6 +81,31 @@ export const AppProvider = ({ children }) => {
   const [inventorySubTab, setInventorySubTab] = useState('all'); // 'all' | 'sold'
   const [toast, setToast] = useState(null);
 
+  // Dedicated categories for expenses (completely separated from inventory products)
+  const [expenseCategories, setExpenseCategories] = useState(() => {
+    try {
+      const saved = localStorage.getItem('stockly_expense_categories');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const addExpenseCategory = useCallback((catName) => {
+    const clean = (catName || '').trim();
+    if (!clean) return;
+    setExpenseCategories((prev) => {
+      if (prev.includes(clean)) return prev;
+      const updated = [...prev, clean];
+      try {
+        localStorage.setItem('stockly_expense_categories', JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
+      return updated;
+    });
+  }, []);
+
   const showToast = useCallback(({ type = 'success', title, message }) => {
     setToast({ type, title, message });
   }, []);
@@ -568,11 +593,58 @@ export const AppProvider = ({ children }) => {
     }));
   };
 
-  const markNotificationsAsRead = () => {
+  const markNotificationsAsRead = async () => {
     setData((prev) => ({
       ...prev,
-      notifications: prev.notifications.map((n) => ({ ...n, read: true }))
+      notifications: (prev.notifications || []).map((n) => ({ ...n, read: true }))
     }));
+
+    try {
+      await api.markAllNotificationsRead();
+    } catch (err) {
+      console.error("Error al marcar todas las notificaciones como leídas:", err);
+    }
+  };
+
+  const markSingleNotificationAsRead = async (id) => {
+    setData((prev) => ({
+      ...prev,
+      notifications: (prev.notifications || []).map((n) =>
+        n.id === id ? { ...n, read: true } : n
+      )
+    }));
+
+    try {
+      await api.markNotificationRead(id);
+    } catch (err) {
+      console.error("Error al marcar notificación como leída:", err);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    setData((prev) => ({
+      ...prev,
+      notifications: []
+    }));
+
+    try {
+      await api.clearNotifications();
+    } catch (err) {
+      console.error("Error al limpiar notificaciones:", err);
+    }
+  };
+
+  const deleteSingleNotification = async (id) => {
+    setData((prev) => ({
+      ...prev,
+      notifications: (prev.notifications || []).filter((n) => n.id !== id)
+    }));
+
+    try {
+      await api.deleteNotification(id);
+    } catch (err) {
+      console.error("Error al eliminar notificación:", err);
+    }
   };
 
   return (
@@ -639,6 +711,8 @@ export const AppProvider = ({ children }) => {
         deleteSale,
         addExpense,
         deleteExpense,
+        expenseCategories,
+        addExpenseCategory,
         addCustomer,
         updateCustomer,
         deleteCustomer,
@@ -647,6 +721,9 @@ export const AppProvider = ({ children }) => {
         updateSettings,
         setActiveBranch,
         markNotificationsAsRead,
+        markSingleNotificationAsRead,
+        clearAllNotifications,
+        deleteSingleNotification,
         toast,
         showToast,
         hideToast

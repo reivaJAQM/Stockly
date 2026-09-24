@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { Banknote, ArrowRightLeft } from 'lucide-react';
+import { Banknote, ArrowRightLeft, HandCoins } from 'lucide-react';
 
 export const ChannelDonut = () => {
   const { data, formatCurrency } = useApp();
@@ -9,8 +9,17 @@ export const ChannelDonut = () => {
   const orders = data.orders || [];
   const totalSales = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
 
-  const cashTotal = orders.filter((o) => (o.paymentMethod || '').toLowerCase().includes('efectivo') || (o.paymentMethod || '').toLowerCase().includes('cash')).reduce((sum, o) => sum + Number(o.total || 0), 0);
-  const transferTotal = orders.filter((o) => (o.paymentMethod || '').toLowerCase().includes('transferencia') || (o.paymentMethod || '').toLowerCase().includes('transfer')).reduce((sum, o) => sum + Number(o.total || 0), 0);
+  const cashTotal = orders
+    .filter((o) => (o.paymentMethod || '').toLowerCase().includes('efectivo') || (o.paymentMethod || '').toLowerCase().includes('cash'))
+    .reduce((sum, o) => sum + Number(o.total || 0), 0);
+
+  const transferTotal = orders
+    .filter((o) => (o.paymentMethod || '').toLowerCase().includes('transferencia') || (o.paymentMethod || '').toLowerCase().includes('transfer'))
+    .reduce((sum, o) => sum + Number(o.total || 0), 0);
+
+  const creditTotal = orders
+    .filter((o) => (o.paymentMethod || '').toLowerCase().includes('crédito') || (o.paymentMethod || '').toLowerCase().includes('credito') || (o.paymentMethod || '').toLowerCase().includes('fiado'))
+    .reduce((sum, o) => sum + Number(o.total || 0), 0);
 
   const methods = [
     {
@@ -20,6 +29,14 @@ export const ChannelDonut = () => {
       percentage: totalSales > 0 ? Number(((cashTotal / totalSales) * 100).toFixed(1)) : 0,
       color: '#10b981',
       icon: Banknote
+    },
+    {
+      id: 'credit',
+      name: 'Crédito',
+      amount: creditTotal,
+      percentage: totalSales > 0 ? Number(((creditTotal / totalSales) * 100).toFixed(1)) : 0,
+      color: '#f59e0b',
+      icon: HandCoins
     },
     {
       id: 'transfer',

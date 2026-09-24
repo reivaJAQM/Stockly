@@ -11,6 +11,7 @@ import settingsRouter from './routes/settings.js';
 import dashboardRouter from './routes/dashboard.js';
 import categoriesRouter from './routes/categories.js';
 import servicesRouter from './routes/services.js';
+import notificationsRouter from './routes/notifications.js';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use('/api/customers', customersRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/categories', categoriesRouter);
+app.use('/api/notifications', notificationsRouter);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', database: 'PostgreSQL', service: 'Stockly API' });

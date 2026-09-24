@@ -17,6 +17,12 @@
     -moz-appearance: textfield;
     appearance: textfield;
   }
+
+  textarea.text-center::placeholder,
+  textarea.text-center,
+  input.text-center::placeholder {
+    text-align: center;
+  }
 }
 
 /* Custom smooth scrollbars */
